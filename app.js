@@ -84,26 +84,26 @@ function avg080(recipe){const values=recipe.map(name=>healthScore080(db.foods.fi
 const renderHealth076=renderHealth;renderHealth=function(){renderHealth076();renderFoods()}
 renderFoods();
 
-// ===== v0.8.3 – Nákup: Seznam + Sdílet, aligned columns, no Copy button =====
-function shoppingShareText083(){return [`Nákup – ${db.store||'Penny'}`,'',...(db.shopping||[]).map(x=>`${x.name} | ${x.qty||1} ${x.unit||'ks'}`)].join('\n')}
-async function shareShoppingList(){if(!(db.shopping||[]).length)return alert('Nákupní seznam je prázdný.');const text=shoppingShareText083();if(navigator.share){try{await navigator.share({title:`Nákup – ${db.store||'Penny'}`,text});return}catch(e){if(e?.name==='AbortError')return}}try{await navigator.clipboard.writeText(text);alert('Systémové sdílení není dostupné. Seznam byl zkopírován do schránky.')}catch{alert('Sdílení není na tomto zařízení dostupné.')}}
-// Keep fallback internal only; no Copy button is rendered.
-async function copyShoppingList(){try{await navigator.clipboard.writeText(shoppingShareText083())}catch{}}
-const renderShopping083=renderShopping;renderShopping=function(){renderShopping083();const container=$('shopping');if(!container)return;[...container.children].forEach(row=>{const text=row.querySelector('span:not(.price):not(.tag)');if(text){const small=text.querySelector('small');if(small){const raw=small.textContent.trim();small.classList.add('shopQtyUnit');small.textContent=raw}}});const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length}
-renderShopping();
-
-// ===== v0.8.4 – fix Potraviny startup render after removal of store filter =====
-// The original 0.7.6 renderFoods() referenced #foodStoreFilter. In 0.8.2 the element was removed,
-// while renderAll() called the original function before the HealthScore override was installed.
-function renderFoodsSafe084(){
- const search=$('search'),cat=$('cat'),score=$('scoreFilter'),list=$('foodList');if(!list||!search||!cat)return;
+// ===== v0.8.5 – deterministic Potraviny load + exact plain-text Nákup =====
+function renderFoods085(){
+ const search=$('search'),cat=$('cat'),score=$('scoreFilter'),list=$('foodList');
+ if(!search||!cat||!list){console.error('Potraviny: chybí povinný element');return}
  const q=search.value.toLocaleLowerCase('cs'),category=cat.value,band=score?.value||'';
- const rows=(db.foods||[]).filter(f=>(!category||f.category===category)&&String(f.name||'').toLocaleLowerCase('cs').includes(q)&&(!band||healthScore080(f).band===band)).sort((a,b)=>String(a.category||'').localeCompare(String(b.category||''),'cs')||String(a.name||'').localeCompare(String(b.name||''),'cs'));
+ const foods=Array.isArray(db.foods)?db.foods:[];
+ const rows=foods.filter(f=>(!category||f.category===category)&&String(f.name||'').toLocaleLowerCase('cs').includes(q)&&(!band||healthScore080(f).band===band)).sort((a,b)=>String(a.category||'').localeCompare(String(b.category||''),'cs')||String(a.name||'').localeCompare(String(b.name||''),'cs'));
  const groups={};rows.forEach(f=>(groups[f.category||'Ostatní']??=[]).push(f));
- list.innerHTML=Object.entries(groups).map(([category,items])=>`<h2 class="cat">${esc(category)}</h2>${items.map(f=>{const h=healthScore080(f);return`<div class="card foodScoreRow" onclick="editFood('${f.id}')"><b>${esc(f.name)}</b><span class="scoreBadge score-${h.band}">${h.score===null?h.label:`${h.label} ${h.score}`}</span><button class="infoBtn" type="button" aria-label="Informace o ${esc(f.name)}" onclick="event.stopPropagation();showFoodInfo080('${f.id}')">i</button></div>`}).join('')}`).join('')||'<div class="card">Nenalezena žádná potravina.</div>';
+ list.innerHTML=Object.entries(groups).map(([group,items])=>`<h2 class="cat">${esc(group)}</h2>${items.map(f=>{const h=healthScore080(f);return`<div class="card foodScoreRow" onclick="editFood('${f.id}')"><b>${esc(f.name)}</b><span class="scoreBadge score-${h.band}">${h.score===null?h.label:`${h.label} ${h.score}`}</span><button class="infoBtn" type="button" onclick="event.stopPropagation();showFoodInfo080('${f.id}')">i</button></div>`}).join('')}`).join('')||'<div class="card">Nenalezena žádná potravina.</div>';
+ list.dataset.renderedCount=String(rows.length);
 }
-renderFoods=renderFoodsSafe084;
-// Replace renderAll so every subsequent save/filter also uses the fixed renderer.
-renderAll=function(){renderMeals();renderPlan();renderShop();renderFoodsSafe084();renderProfile();renderHealth()};
-// Initial verified render after all overrides are loaded.
-renderFoodsSafe084();
+renderFoods=renderFoods085;
+function renderShop085(){
+ let total=0;$('store').value=db.store||'Penny';
+ $('shopList').innerHTML=(db.shopping||[]).map(x=>{const known=x.price!==null&&x.price!==undefined&&x.price!=='';const amount=known?(+x.qty||1)*(+x.price||0):null;if(known)total+=amount;return`<div class="shopPlainRow" onclick="openShop(${x.id})"><span class="shopPlainName">${esc(x.name)}</span><span class="shopPlainQty">${x.qty||1} ${esc(x.unit||'ks')}</span><span class="shopPlainPrice">${known?money(amount):'-'}</span><button type="button" onclick="event.stopPropagation();db.shopping=db.shopping.filter(y=>y.id!==${x.id});save()">×</button></div>`}).join('');
+ $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const share=$('shareShopBtn');if(share)share.disabled=!(db.shopping||[]).length;
+}
+renderShop=renderShop085;
+function shoppingText085(){return[`Nákup – ${db.store||'Penny'}`,'',...(db.shopping||[]).map(x=>`${x.name} | ${x.qty||1} ${x.unit||'ks'}`)].join('\n')}
+async function shareShopping085(){if(!(db.shopping||[]).length)return alert('Nákupní seznam je prázdný.');const text=shoppingText085();if(navigator.share){try{await navigator.share({title:`Nákup – ${db.store||'Penny'}`,text});return}catch(e){if(e?.name==='AbortError')return}}try{await navigator.clipboard.writeText(text);alert('Systémové sdílení není dostupné. Seznam byl zkopírován do schránky.')}catch{alert('Sdílení není dostupné.')}}
+renderAll=function(){renderMeals();renderPlan();renderShop085();renderFoods085();renderProfile();renderHealth()};
+// Verify both visible areas after all overrides are installed.
+renderShop085();renderFoods085();
