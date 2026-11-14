@@ -61,3 +61,10 @@ function saveProfile(){
  if((h&&h<=0)||(w&&w<=0)||(t&&t<=0)||(k&&k<=0))return alert('Výška, hmotnost, cílová hmotnost a denní kcal musí být kladné hodnoty.');
  for(const x of ['name','age','height','weight','target','goal','kcalGoal'])db.profile[x]=$(x).value;save();const b=$('saveProfileBtn');b.textContent='✓ Uloženo';b.classList.add('savedFlash');setTimeout(()=>{b.textContent='Uložit profil';b.classList.remove('savedFlash')},1600)
 }
+
+
+// v0.7.3 – shopping share. This function reads shopping data only, never profile/HealthVault.
+function shoppingShareText(){const store=db.store||'Penny',lines=[`Nákup – ${store}`,''];let total=0,known=0;(db.shopping||[]).forEach(x=>{const has=x.price!==null&&x.price!==undefined&&x.price!==''&&Number.isFinite(Number(x.price)),sum=has?(x.qty||1)*Number(x.price):null;if(has){total+=sum;known++}lines.push(`☐ ${x.name} – ${x.qty||1} ${x.unit||'ks'} – ${has?sum.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč':'Cena není evidována'}`)});lines.push('');lines.push(known?`Celkem z položek se známou cenou: ${total.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} Kč`:'Celkem: cena není evidována');return lines.join('\n')}
+async function shareShoppingList(){if(!(db.shopping||[]).length)return alert('Nákupní seznam je prázdný.');const text=shoppingShareText();if(navigator.share){try{await navigator.share({title:`Nákup – ${db.store||'Penny'}`,text});return}catch(e){if(e?.name==='AbortError')return}}await copyShoppingList()}
+async function copyShoppingList(){if(!(db.shopping||[]).length)return alert('Nákupní seznam je prázdný.');const text=shoppingShareText();try{await navigator.clipboard.writeText(text);alert('Nákupní seznam byl zkopírován.')}catch{prompt('Zkopíruj nákupní seznam:',text)}}
+const _renderShop073=renderShop;renderShop=function(){_renderShop073();const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length};renderShop();
