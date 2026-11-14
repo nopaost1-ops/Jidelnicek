@@ -107,3 +107,17 @@ async function shareShopping085(){if(!(db.shopping||[]).length)return alert('Ná
 renderAll=function(){renderMeals();renderPlan();renderShop085();renderFoods085();renderProfile();renderHealth()};
 // Verify both visible areas after all overrides are installed.
 renderShop085();renderFoods085();
+
+// ===== v0.8.7 – Shopping row rebuilt from data; quantity never remains inside name column =====
+function renderShop087(){
+ let total=0;const list=$('shopList');if(!list)return;$('store').value=db.store||'Penny';
+ list.innerHTML=(db.shopping||[]).map(item=>{
+   const qty=Number(item.qty)||1,unit=item.unit||'ks',known=item.price!==null&&item.price!==undefined&&item.price!==''&&Number.isFinite(Number(item.price));
+   const linePrice=known?qty*Number(item.price):null;if(known)total+=linePrice;
+   return `<div class="shopPlainRow" onclick="openShop(${item.id})"><span class="shopPlainName">${esc(item.name)}</span><span class="shopPlainQty">${qty} ${esc(unit)}</span><span class="shopPlainPrice">${known?money(linePrice):'-'}</span><button type="button" aria-label="Odstranit ${esc(item.name)}" onclick="event.stopPropagation();db.shopping=db.shopping.filter(x=>x.id!==${item.id});save()">×</button></div>`;
+ }).join('');
+ $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length;
+}
+renderShop=renderShop087;
+const renderAll087=renderAll;renderAll=function(){renderMeals();renderPlan();renderShop087();renderFoods();renderProfile();renderHealth()};
+renderShop087();
