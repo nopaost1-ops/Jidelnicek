@@ -136,3 +136,30 @@ function renderShop089(){
 renderShop=renderShop089;
 renderAll=function(){renderMeals();renderPlan();renderShop089();renderFoods();renderProfile();renderHealth()};
 renderShop089();
+
+// ===== v0.8.10 – literal plain text: Název | Množství | Cena | × =====
+function renderShop0810(){
+ const list=$('shopList');if(!list)return;let total=0;$('store').value=db.store||'Penny';list.hidden=false;list.style.display='block';
+ list.innerHTML=(db.shopping||[]).map(item=>{
+  const qty=Number(item.qty)||1,unit=item.unit||'ks',known=item.price!==null&&item.price!==undefined&&item.price!==''&&Number.isFinite(Number(item.price)),price=known?qty*Number(item.price):null;if(known)total+=price;
+  return `<div class="shopPlainRow" onclick="openShop(${item.id})"><button class="plainDelete" type="button" onclick="event.stopPropagation();db.shopping=db.shopping.filter(x=>x.id!==${item.id});save()">×</button><span class="shopPlainName">${esc(item.name)}</span><span class="plainSep">|</span><span class="shopPlainQty">${qty} ${esc(unit)}</span><span class="plainSep">|</span><span class="shopPlainPrice plainPrice">${known?money(price):'-'}</span></div>`;
+ }).join('')||'<p class="note">Seznam je prázdný.</p>';
+ $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length;
+}
+renderShop=renderShop0810;
+renderAll=function(){renderMeals();renderPlan();renderShop0810();renderFoods();renderProfile();renderHealth()};
+renderShop0810();
+
+// ===== v0.8.11 – aligned plain-text visual grid, identical template for header and every row =====
+function ensureShopHeader0811(){
+ const list=$('shopList');if(!list)return;let h=document.querySelector('.shopAlignedHeader');
+ if(!h){h=document.createElement('div');h.className='shopAlignedHeader';h.innerHTML='<span>Název</span><i>|</i><span>Množství</span><i>|</i><span>Cena</span><i>|</i><span>×</span>';list.parentNode.insertBefore(h,list);}
+}
+function renderShop0811(){
+ const list=$('shopList');if(!list)return;ensureShopHeader0811();let total=0;$('store').value=db.store||'Penny';list.hidden=false;list.style.display='block';
+ list.innerHTML=(db.shopping||[]).map(item=>{const qty=Number(item.qty)||1,unit=item.unit||'ks',known=item.price!==null&&item.price!==undefined&&item.price!==''&&Number.isFinite(Number(item.price)),line=known?qty*Number(item.price):null;if(known)total+=line;return `<div class="shopAlignedRow" onclick="openShop(${item.id})"><span class="shopAlignedName">${esc(item.name)}</span><i>|</i><span class="shopAlignedQty">${qty} ${esc(unit)}</span><i>|</i><span class="shopAlignedPrice">${known?money(line):'-'}</span><i>|</i><button class="shopAlignedDelete" type="button" onclick="event.stopPropagation();db.shopping=db.shopping.filter(x=>x.id!==${item.id});save()">×</button></div>`}).join('')||'<p class="note">Seznam je prázdný.</p>';
+ $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length;
+}
+renderShop=renderShop0811;
+renderAll=function(){renderMeals();renderPlan();renderShop0811();renderFoods();renderProfile();renderHealth()};
+renderShop0811();
