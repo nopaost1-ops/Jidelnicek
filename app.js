@@ -121,3 +121,20 @@ function renderShop087(){
 renderShop=renderShop087;
 const renderAll087=renderAll;renderAll=function(){renderMeals();renderPlan();renderShop087();renderFoods();renderProfile();renderHealth()};
 renderShop087();
+
+// ===== v0.8.8 – shopping table; TH and TD use the same colgroup =====
+function renderShop088(){
+ const body=$('shopTableBody');if(!body)return;let total=0;$('store').value=db.store||'Penny';
+ body.innerHTML=(db.shopping||[]).map(item=>{
+   const qty=Number(item.qty)||1,unit=item.unit||'ks';
+   const known=item.price!==null&&item.price!==undefined&&item.price!==''&&Number.isFinite(Number(item.price));
+   const linePrice=known?qty*Number(item.price):null;if(known)total+=linePrice;
+   return `<tr onclick="openShop(${item.id})"><td class="shopCellName">${esc(item.name)}</td><td class="shopCellQty">${qty} ${esc(unit)}</td><td class="shopCellPrice">${known?money(linePrice):'-'}</td><td class="shopCellDelete"><button type="button" aria-label="Odstranit" onclick="event.stopPropagation();db.shopping=db.shopping.filter(x=>x.id!==${item.id});save()">×</button></td></tr>`;
+ }).join('');
+ $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length;
+}
+function shoppingText088(){return[`Nákup – ${db.store||'Penny'}`,'',...(db.shopping||[]).map(x=>`${x.name} | ${Number(x.qty)||1} ${x.unit||'ks'}`)].join('\n')}
+async function shareShopping088(){if(!(db.shopping||[]).length)return alert('Nákupní seznam je prázdný.');const text=shoppingText088();if(navigator.share){try{await navigator.share({title:`Nákup – ${db.store||'Penny'}`,text});return}catch(e){if(e?.name==='AbortError')return}}try{await navigator.clipboard.writeText(text);alert('Systémové sdílení není dostupné. Seznam byl zkopírován do schránky.')}catch{alert('Sdílení není dostupné.')}}
+renderShop=renderShop088;
+renderAll=function(){renderMeals();renderPlan();renderShop088();renderFoods();renderProfile();renderHealth()};
+renderShop088();
