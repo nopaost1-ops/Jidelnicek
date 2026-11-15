@@ -11,3 +11,6 @@
 /* Align every help icon on the same x-axis: longest label is 'Celkový cholesterol'; add about two character widths. */
 .labTitleLine0822{display:grid!important;grid-template-columns:20ch 24px!important;column-gap:2ch!important;align-items:center!important;justify-content:start!important}.labTitleLine0822 .lab0820Name{white-space:nowrap!important}.labInfoBtn0822{justify-self:start!important;margin:0!important;transform:none!important;width:22px!important;height:22px!important;padding:0!important}
 @media(max-width:470px){.lab0824Header,.lab0824DataRow{grid-template-columns:12% 19% 12% 45% 12%;column-gap:0}.lab0824ParamLine,.labTitleLine0822{grid-template-columns:20ch 22px!important;column-gap:2ch!important}.lab0824Value{font-size:15px!important;height:30px!important}.lab0824Unit{font-size:10.5px}.lab0824State{font-size:18px}}
+
+/* v0.8.30 active bottom navigation */
+nav button.navActive0830{background:#2f6b4f!important;color:#fff!important;border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
