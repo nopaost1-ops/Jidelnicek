@@ -20,7 +20,7 @@ const RECIPE={Snídaně:[['Skyr bílý','Ovesné vločky','Banán'],['Bílý jog
 function openPicker(m){pMode=m;pCat='';showGroups();$('picker').showModal()}function showGroups(){pCat='';$('pickSearch').value='';$('pickBody').innerHTML=CATS.slice().sort((a,b)=>a.localeCompare(b,'cs')).map(c=>`<button onclick="pCat='${c}';renderPicker()"><b>${c}</b><small>${db.foods.filter(f=>f.category===c).length} položek</small></button>`).join('')}function renderPicker(){let q=$('pickSearch').value.toLowerCase(),a=db.foods.filter(f=>(!pCat||f.category===pCat)&&f.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name,'cs'));$('pickBody').innerHTML=a.map(f=>`<button onclick="choose('${f.id}')"><b>${esc(f.name)}</b><small>${f.kcal} kcal/100 g · ${healthBadge(f)}</small><div class="tileMeta">${storeDots(f)}<span class="priceBadge ${f.prices?.[db.store]==null?'none':''}">${priceLabel(f,db.store)}</span></div></button>`).join('')}
 function choose(id){let f=db.foods.find(x=>x.id===id);if(!f)return;if(pMode==='meal'){addFood0812(id)}else{$('shopFood').value=id;$('shopName').value=f.name;$('shopPrice').value=f.prices?.[db.store]??''}$('picker').close()}function newFoodFromPicker(){$('picker').close();editFood()}
 function priceLabel(f,s){let p=f?.prices?.[s];return p==null?'-':`${money(p)} / ${f.priceBasis==='kg'?'kg':'kus'}`}function storeDots(f){return STORES.map((s,i)=>`<span class="storeDot ${['p','b','a','t'][i]}" title="${s}: ${f.available?.[s]?'dostupné':'neuvedeno'}">${s[0]}</span>`).join('')}
-function saveStore(){db.store=$('store').value;(db.shopping||[]).forEach(x=>{if(x.foodId){let f=db.foods.find(z=>z.id===x.foodId);x.price=f?.prices?.[db.store]??null;x.priceBasis=f?.priceBasis||'piece'}});save()}function openShop(id=null){editShopId=id;let x=db.shopping.find(y=>y.id===id);$('shopName').value=x?.name||'';$('shopQty').value=x?.qty||1;$('shopUnit').value=x?.unit||'ks';$('shopPrice').value=x?.price??'';$('shopFood').value=x?.foodId||'';$('shopDlg').showModal()}function matchShopFood(){}function saveShop(e){e.preventDefault();let f=db.foods.find(x=>x.id===$('shopFood').value),item={id:editShopId||Date.now(),foodId:f?.id||null,name:$('shopName').value,qty:+$('shopQty').value||1,unit:$('shopUnit').value,price:$('shopPrice').value===''?null:+$('shopPrice').value,priceBasis:f?.priceBasis||'piece'};let i=db.shopping.findIndex(x=>x.id===editShopId);i>=0?db.shopping[i]=item:db.shopping.push(item);editShopId=null;$('shopDlg').close();save()}function renderShop(){let total=0;$('store').value=db.store;$('shopList').innerHTML=db.shopping.map(x=>{let known=x.price!=null;if(known)total+=x.qty*x.price;return `<div class="shopline" onclick="openShop(${x.id})"><span>${esc(x.name)} <small>${x.qty} ${x.unit}</small></span><b>${known?money(x.qty*x.price):'-'}</b><button onclick="event.stopPropagation();db.shopping=db.shopping.filter(y=>y.id!==${x.id});save()">×</button></div>`}).join('');$('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;$('shareBtn').disabled=!db.shopping.length;$('copyBtn').disabled=!db.shopping.length}
+function saveStore(){db.store=$('store').value;(db.shopping||[]).forEach(x=>{if(x.foodId){let f=db.foods.find(z=>z.id===x.foodId);x.price=f?.prices?.[db.store]??null;x.priceBasis=f?.priceBasis||'piece'}});save()}function openShop(id=null){editShopId=id;let x=db.shopping.find(y=>y.id===id);$('shopName').value=x?.name||'';$('shopQty').value=x?.qty||1;$('shopUnit').value=x?.unit||'ks';$('shopPrice').value=x?.price??'';$('shopFood').value=x?.foodId||'';$('shopDlg').showModal()}function matchShopFood(){}function saveShop(e){e.preventDefault();let f=db.foods.find(x=>x.id===$('shopFood').value),item={id:editShopId||Date.now(),foodId:f?.id||null,name:$('shopName').value,qty:+$('shopQty').value||1,unit:$('shopUnit').value,price:$('shopPrice').value===''?null:+$('shopPrice').value,priceBasis:f?.priceBasis||'piece'};let i=db.shopping.findIndex(x=>x.id===editShopId);i>=0?db.shopping[i]=item:db.shopping.push(item);editShopId=null;$('shopDlg').close();save()}function renderShop(){let total=0;$('store').value=db.store;$('shopList').innerHTML=db.shopping.map(x=>{let known=x.price!=null;if(known)total+=x.qty*x.price;return `<div class="shopline" onclick="openShop(${x.id})"><span>${esc(x.name)} <small>${x.qty} ${x.unit}</small></span><b>${known?money(x.qty*x.price):'-'}</b><button onclick="event.stopPropagation();db.shopping=db.shopping.filter(y=>y.id!==${x.id});save()">×</button></div>`}).join('');$('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;{const sb=$('shareShopBtn')||$('shareBtn');if(sb)sb.disabled=!db.shopping.length;const cb=$('copyBtn');if(cb)cb.disabled=!db.shopping.length}}
 function shareText(){let total=0,lines=[`Nákup – ${db.store}`,''];db.shopping.forEach(x=>{let known=x.price!=null,sum=known?x.qty*x.price:null;if(known)total+=sum;lines.push(`${x.name} | ${x.qty} ${x.unit} | ${known?money(sum):'-'}`)});lines.push('',`Celkem ze známých cen: ${money(total)}`);return lines.join('\n')}async function shareShopping(){if(!db.shopping.length)return alert('Nákupní seznam je prázdný.');if(navigator.share)try{return await navigator.share({title:`Nákup – ${db.store}`,text:shareText()})}catch(e){if(e.name==='AbortError')return}return copyShopping()}async function copyShopping(){if(!db.shopping.length)return alert('Nákupní seznam je prázdný.');try{await navigator.clipboard.writeText(shareText());alert('Nákupní seznam byl zkopírován.')}catch{alert('Kopírování není dostupné.') }}
 function fillCats(){for(const id of ['cat','fCat'])$(id).innerHTML=(id==='cat'?'<option value="">Všechny kategorie</option>':'')+CATS.map(c=>`<option>${c}</option>`).join('')}function renderFoods(){let q=$('search').value.toLowerCase(),c=$('cat').value,s=$('foodStoreFilter').value,a=db.foods.filter(f=>(!c||f.category===c)&&(!s||f.available?.[s])&&f.name.toLowerCase().includes(q)).sort((a,b)=>a.category.localeCompare(b.category,'cs')||a.name.localeCompare(b.name,'cs')),g={};a.forEach(f=>(g[f.category]??=[]).push(f));$('foodList').innerHTML=Object.entries(g).map(([c,fs])=>`<h2 class="cat">${c}</h2>${fs.map(f=>`<div class="card" onclick="editFood('${f.id}')"><b>${esc(f.name)}</b><small>${f.kcal} kcal · B ${fmt(f.p)} · S ${fmt(f.c)} · T ${fmt(f.f)} · ${healthBadge(f)}</small><div class="tileMeta">${storeDots(f)} <span>${priceLabel(f,db.store)}</span></div></div>`).join('')}`).join('')}
 function editFood(id=null){editFoodId=id;let f=db.foods.find(x=>x.id===id);for(const [k,v] of Object.entries({fName:f?.name||'',fCat:f?.category||'Ostatní',fK:f?.kcal||'',fP:f?.p||'',fC:f?.c||'',fF:f?.f||'',fPenny:f?.prices?.Penny??'',fBilla:f?.prices?.BILLA??'',fAlbert:f?.prices?.Albert??'',fTesco:f?.prices?.Tesco??'',priceBasis:f?.priceBasis||'piece'}))if($(k))$(k).value=v;$('foodDlg').showModal()}function saveFood(e){e.preventDefault();let old=db.foods.find(x=>x.id===editFoodId),f={id:old?.id||`u${Date.now()}`,name:$('fName').value,category:$('fCat').value,kcal:+$('fK').value,p:+$('fP').value,c:+$('fC').value,f:+$('fF').value,prices:{Penny:numOrNull('fPenny'),BILLA:numOrNull('fBilla'),Albert:numOrNull('fAlbert'),Tesco:numOrNull('fTesco')},available:{Penny:$('fPenny').value!=='',BILLA:$('fBilla').value!=='',Albert:$('fAlbert').value!=='',Tesco:$('fTesco').value!==''},priceBasis:$('priceBasis').value};let i=db.foods.findIndex(x=>x.id===editFoodId);i>=0?db.foods[i]=f:db.foods.push(f);editFoodId=null;$('foodDlg').close();save()}function numOrNull(id){return $(id).value===''?null:+$(id).value}
@@ -97,7 +97,7 @@ function renderShop085(){
  $('shopList').innerHTML=(db.shopping||[]).map(x=>{const known=x.price!==null&&x.price!==undefined&&x.price!=='';const amount=known?(+x.qty||1)*(+x.price||0):null;if(known)total+=amount;return`<div class="shopPlainRow" onclick="openShop(${x.id})"><span class="shopPlainName">${esc(x.name)}</span><span class="shopPlainQty">${x.qty||1} ${esc(x.unit||'ks')}</span><span class="shopPlainPrice">${known?money(amount):'-'}</span><button type="button" onclick="event.stopPropagation();db.shopping=db.shopping.filter(y=>y.id!==${x.id});save()">×</button></div>`}).join('');
  $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const share=$('shareShopBtn');if(share)share.disabled=!(db.shopping||[]).length;
 }
-renderShop=renderShop085;
+
 function shoppingText085(){return[`Nákup – ${db.store||'Penny'}`,'',...(db.shopping||[]).map(x=>`${x.name} | ${x.qty||1} ${x.unit||'ks'}`)].join('\n')}
 async function shareShopping085(){if(!(db.shopping||[]).length)return alert('Nákupní seznam je prázdný.');const text=shoppingText085();if(navigator.share){try{await navigator.share({title:`Nákup – ${db.store||'Penny'}`,text});return}catch(e){if(e?.name==='AbortError')return}}try{await navigator.clipboard.writeText(text);alert('Systémové sdílení není dostupné. Seznam byl zkopírován do schránky.')}catch{alert('Sdílení není dostupné.')}}
 renderAll=function(){renderMeals();renderPlan();renderShop085();renderFoods085();renderProfile();renderHealth()};
@@ -114,7 +114,7 @@ function renderShop087(){
  }).join('');
  $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length;
 }
-renderShop=renderShop087;
+
 const renderAll087=renderAll;renderAll=function(){renderMeals();renderPlan();renderShop087();renderFoods();renderProfile();renderHealth()};
 renderShop087();
 
@@ -129,7 +129,7 @@ function renderShop089(){
  }).join('')||'<p class="note">Seznam je prázdný.</p>';
  $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length;
 }
-renderShop=renderShop089;
+
 renderAll=function(){renderMeals();renderPlan();renderShop089();renderFoods();renderProfile();renderHealth()};
 renderShop089();
 
@@ -142,7 +142,7 @@ function renderShop0810(){
  }).join('')||'<p class="note">Seznam je prázdný.</p>';
  $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length;
 }
-renderShop=renderShop0810;
+
 renderAll=function(){renderMeals();renderPlan();renderShop0810();renderFoods();renderProfile();renderHealth()};
 renderShop0810();
 
@@ -156,7 +156,7 @@ function renderShop0811(){
  list.innerHTML=(db.shopping||[]).map(item=>{const qty=Number(item.qty)||1,unit=item.unit||'ks',known=item.price!==null&&item.price!==undefined&&item.price!==''&&Number.isFinite(Number(item.price)),line=known?qty*Number(item.price):null;if(known)total+=line;return `<div class="shopAlignedRow" onclick="openShop(${item.id})"><span class="shopAlignedName">${esc(item.name)}</span><i>|</i><span class="shopAlignedQty">${qty} ${esc(unit)}</span><i>|</i><span class="shopAlignedPrice">${known?money(line):'-'}</span><i>|</i><button class="shopAlignedDelete" type="button" onclick="event.stopPropagation();db.shopping=db.shopping.filter(x=>x.id!==${item.id});save()">×</button></div>`}).join('')||'<p class="note">Seznam je prázdný.</p>';
  $('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const b=$('shareShopBtn');if(b)b.disabled=!(db.shopping||[]).length;
 }
-renderShop=renderShop0811;
+
 renderAll=function(){renderMeals();renderPlan();renderShop0811();renderFoods();renderProfile();renderHealth()};
 renderShop0811();
 
@@ -193,3 +193,21 @@ function saveMeal0812(e){
  if($('saveRecipe0812').checked){db.recipes??=[];let ri=db.recipes.findIndex(x=>x.name===m.name);let recipe={id:ri>=0?db.recipes[ri].id:Date.now(),name:m.name,type:m.type,ingredients:m.ingredients};ri>=0?db.recipes[ri]=recipe:db.recipes.push(recipe)}
  $('mealDlg').close();save();
 }
+
+// ===== v0.8.14 – canonical, null-safe Nákup renderer =====
+function renderShop0814(){
+ const list=$('shopList');if(!list)return;let total=0;
+ if($('store'))$('store').value=db.store||'Penny';list.hidden=false;list.style.display='block';
+ list.innerHTML=(db.shopping||[]).map(item=>{
+  const qty=Number(item.qty)||1,unit=item.unit||'ks';
+  const known=item.price!==null&&item.price!==undefined&&item.price!==''&&Number.isFinite(Number(item.price));
+  const line=known?qty*Number(item.price):null;if(known)total+=line;
+  return `<div class="shopAlignedRow" onclick="openShop(${item.id})"><span class="shopAlignedName">${esc(item.name)}</span><i>|</i><span class="shopAlignedQty">${qty} ${esc(unit)}</span><i>|</i><span class="shopAlignedPrice">${known?money(line):'-'}</span><i>|</i><button class="shopAlignedDelete" type="button" onclick="event.stopPropagation();db.shopping=db.shopping.filter(x=>x.id!==${item.id});save()">×</button></div>`;
+ }).join('')||'<p class="note">Seznam je prázdný.</p>';
+ if($('shopTotal'))$('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;
+ const share=$('shareShopBtn');if(share)share.disabled=!(db.shopping||[]).length;
+}
+renderShop=renderShop0814;
+// One final application-wide render pipeline. No missing-button assumptions.
+renderAll=function(){renderMeals();renderPlan();renderShop0814();renderFoods();renderProfile();renderHealth()};
+renderShop0814();
