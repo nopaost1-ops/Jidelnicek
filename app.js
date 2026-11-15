@@ -65,13 +65,16 @@ const LABREF0820={
 };
 function labBounds0820(key){const r=LABREF0820[key],sex=db.profile?.sex||'';return r[sex]||r.all}
 function labStatus0820(value,min,max){const v=parseFloat(String(value??'').replace(',','.'));if(!Number.isFinite(v))return{cls:'none',txt:'–'};if(v<min)return{cls:'bad',txt:'↓'};if(v>max)return{cls:'bad',txt:'↑'};return{cls:'ok',txt:'✓'}}
-function labRow0820(key){const r=LABREF0820[key],[min,max]=labBounds0820(key),item=healthDraft.labs.items[key]||{},st=labStatus0820(item.value,min,max);return `<div class="lab0820Block"><div class="lab0820Name">${r.name}</div><div class="lab0820Row lab0823Row"><div class="lab0823Box lab0823Fixed"><span>Min</span><input value="${String(min).replace('.',',')}" readonly tabindex="-1" aria-label="${r.name} minimum"></div><div class="lab0823Box lab0823Measured"><input id="lab-${key}-value" inputmode="decimal" value="${esc(item.value||'')}" aria-label="${r.name} měřená hodnota" oninput="evaluateLab0821('${key}',this.value)"></div><div class="lab0823Box lab0823Fixed"><span>Max</span><input value="${String(max).replace('.',',')}" readonly tabindex="-1" aria-label="${r.name} maximum"></div><span class="lab0820Unit lab0823Unit">${r.unit}</span><span id="lab-${key}-status" class="lab0820State lab0823State ${st.cls}">${st.txt}</span></div></div>`}
+function labRow0820(key){
+ const r=LABREF0820[key],[min,max]=labBounds0820(key),item=healthDraft.labs.items[key]||{},st=labStatus0820(item.value,min,max);
+ return `<div class="lab0824Block"><div class="lab0824ParamLine"><span class="lab0820Name">${r.name}</span></div><div class="lab0824DataRow"><span class="lab0824Min">${String(min).replace('.',',')}</span><input id="lab-${key}-value" class="lab0824Value" inputmode="decimal" value="${esc(item.value||'')}" aria-label="${r.name} měřená hodnota" oninput="evaluateLab0821('${key}',this.value)"><span class="lab0824Max">${String(max).replace('.',',')}</span><span class="lab0824Unit">${r.unit}</span><span id="lab-${key}-status" class="lab0824State ${st.cls}">${st.txt}</span></div></div>`;
+}
 const renderHealthEditorPre0820=renderHealthEditor;
 renderHealthEditor=function(){
  normalizeHealthDraft();
  if(healthStep!==3)return renderHealthEditorPre0820();
  const sex=db.profile?.sex==='male'?'Muž':db.profile?.sex==='female'?'Žena':'Neuvedeno';
- $('healthStep').innerHTML=`<div class="healthTitle">Zdraví – Laboratoř</div><label>Datum odběru<input id="labDate" type="date" value="${healthDraft.labs.date||''}"></label><div class="lab0820Sex">Referenční meze pro: <b>${sex}</b></div>${Object.keys(LABREF0820).map(labRow0820).join('')}<div class="healthBox">Min a Max jsou pouze pro čtení. ✓ = hodnota v rozmezí, ↓ = pod rozmezím, ↑ = nad rozmezím. Referenční meze na konkrétní laboratorní zprávě mají přednost.</div>`;
+ $('healthStep').innerHTML=`<div class="healthTitle">Zdraví – Laboratoř</div><label>Datum odběru<input id="labDate" type="date" value="${healthDraft.labs.date||''}"></label><div class="lab0820Sex">Referenční meze pro: <b>${sex}</b></div><div class="lab0824Header"><span>Min</span><span>Hodnota</span><span>Max</span><span>Jednotka</span><span>Stav</span></div>${Object.keys(LABREF0820).map(labRow0820).join('')}<div class="healthBox">Min a Max jsou pouze pro čtení. ✓ = hodnota v rozmezí, ↓ = pod rozmezím, ↑ = nad rozmezím. Referenční meze na konkrétní laboratorní zprávě mají přednost.</div>`;
  document.querySelectorAll('.healthTabs button').forEach((b,i)=>b.classList.toggle('active',i===healthStep));
 };
 // Capture only measured value. Min/Max are constants and are never written into HealthVault.
