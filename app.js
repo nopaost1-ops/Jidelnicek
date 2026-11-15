@@ -40,7 +40,7 @@ async function saveCurrentHealthTab(){pullHealth();healthDraft.updatedAt=new Dat
 function renderHealth(){let sum=$('healthSummary'),lock=$('lockHealthBtn');if(!healthKey||!healthData){sum.innerHTML='';if(lock)lock.hidden=true;return}if(lock)lock.hidden=false;sum.innerHTML=`<div class="healthBox"><b>Alergie:</b> ${esc(healthData.allergies.join(', ')||'žádné')}</div><div class="healthBox"><b>Omezení:</b> ${esc(healthData.conditions.join(', ')||'žádná')}</div>`}
 function healthLevel(f){if(!f||!healthData)return'neutral';let n=f.name.toLowerCase(),a=healthData.allergies||[],r=healthData.recommendations||[],c=healthData.conditions||[];if(a.includes('Arašídy')&&n.includes('araš'))return'bad';if(a.includes('Mléko')&&f.category==='Mléčné výrobky')return'bad';if(a.includes('Vejce')&&f.category==='Vejce')return'bad';if(a.includes('Ryby')&&['Losos','Treska','Tuňák','Pstruh','Makrela'].includes(f.name))return'bad';if(a.includes('Korýši')&&f.name==='Krevety')return'bad';if((r.includes('Omezit nasycené tuky')||c.includes('Vysoký cholesterol / porucha lipidů')||c.includes('Zvýšené triglyceridy'))&&['Máslo','Eidam','Vepřová kýta'].includes(f.name))return'limit';if(r.includes('Omezit jednoduché cukry')&&['Med','Hořká čokoláda'].includes(f.name))return'limit';return'good'}function healthBadge(f){let l=healthLevel(f);return{bad:'🔴 nevhodné',limit:'🟠 omezit',good:'🟢 vhodné',neutral:'⚪ bez vyhodnocení'}[l]}
 function exportNormal(){let x={profile:db.profile,meals:db.meals,shopping:db.shopping,foods:db.foods};let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(x,null,2)],{type:'application/json'}));a.download='jidelnicek-zaloha.json';a.click()}
-function renderAll(){renderMeals();renderPlan();renderShop();renderFoods();renderProfile();renderHealth()}seed();fillCats();renderAll();
+function renderAll(){renderMeals();renderPlan();renderShop();renderFoods();renderProfile();renderHealth()}/* boot moved to end in v0.8.15 */
 
 // ===== 0.8.0: HealthScore jako izolovaná vrstva nad funkcemi 0.7.6 =====
 function healthContext080(){return healthData||{allergies:[],intolerances:[],conditions:[],recommendations:[]}}
@@ -211,3 +211,48 @@ renderShop=renderShop0814;
 // One final application-wide render pipeline. No missing-button assumptions.
 renderAll=function(){renderMeals();renderPlan();renderShop0814();renderFoods();renderProfile();renderHealth()};
 renderShop0814();
+
+// ===== v0.8.15 – all smoke-test changes and acceptance criteria =====
+// P0: dedicated global entry point, available from both Dnes and Plán.
+window.openMeal0815=function(date,id=null){
+ try{
+  const target=date||dateKey();activeDate=target;editMeal=id;
+  const meal=(db.meals||[]).find(x=>String(x.id)===String(id));ings=meal?.ingredients?.map(x=>({...x}))||[];
+  $('mealTitle').textContent=meal?'Upravit jídlo • Suroviny':'Sestavit jídlo • Hledání surovin';
+  $('mealName').value=meal?.name||'';$('mealType').value=meal?.type||'Snídaně';
+  document.querySelectorAll('#mealTypePills button').forEach(b=>b.classList.toggle('active',b.dataset.type===$('mealType').value));
+  $('ingredientSearch').value='';mealSearchMode0812='all';document.querySelectorAll('.mealSearchChips button').forEach((b,i)=>b.classList.toggle('active',i===0));
+  updateMealContext0812();renderMealSearch0812();renderIngs0812();
+  const dlg=$('mealDlg');if(!dlg)throw new Error('Dialog mealDlg nebyl nalezen');dlg.showModal();
+ }catch(error){console.error('openMeal0815',error);alert('Editor jídla se nepodařilo otevřít: '+error.message)}
+};
+// Edit existing meal cards through the same fixed entry point.
+openMeal=window.openMeal0815;
+
+// Nákup exactly follows the Stitch 45/20/23/12 proportions.
+function renderShop0815(){
+ const list=$('shopList');if(!list)return;let total=0;if($('store'))$('store').value=db.store||'Penny';
+ list.innerHTML=(db.shopping||[]).map(item=>{const qty=Number(item.qty)||1,unit=item.unit||'ks',known=item.price!==null&&item.price!==undefined&&item.price!==''&&Number.isFinite(Number(item.price)),line=known?qty*Number(item.price):null;if(known)total+=line;return `<div class="shopStitchRow" onclick="openShop(${item.id})"><span class="shopStitchName">${esc(item.name)}</span><span class="shopStitchQty">${qty} ${esc(unit)}</span><span class="shopStitchPrice">${known?money(line):'-'}</span><span><button class="shopStitchDelete" type="button" aria-label="Odstranit ${esc(item.name)}" onclick="event.stopPropagation();db.shopping=db.shopping.filter(x=>x.id!==${item.id});save()">×</button></span></div>`}).join('')||'<p class="note">Seznam je prázdný.</p>';
+ if($('shopTotal'))$('shopTotal').textContent=`Celkem ze známých cen: ${money(total)}`;const share=$('shareShopBtn');if(share)share.disabled=!(db.shopping||[]).length;
+}
+function shoppingText0815(){return [`Nákup – ${db.store||'Penny'}`,'',...(db.shopping||[]).map(x=>`${x.name}  ${Number(x.qty)||1} ${x.unit||'ks'}`)].join('\n')}
+window.shareShopping0815=async function(){if(!(db.shopping||[]).length)return alert('Nákupní seznam je prázdný.');const text=shoppingText0815();if(navigator.share){try{await navigator.share({title:`Nákup – ${db.store||'Penny'}`,text});return}catch(e){if(e?.name==='AbortError')return}}try{await navigator.clipboard.writeText(text);alert('Systémové sdílení není dostupné. Seznam byl zkopírován do schránky.')}catch{alert('Sdílení není dostupné.')}};
+renderShop=renderShop0815;
+
+// Profile: Name | Sex; Height | Weight | BMI.
+function calculateBMI0815(){const h=Number($('height')?.value)/100,w=Number($('weight')?.value);const bmi=h>0&&w>0?w/(h*h):null;if($('bmi'))$('bmi').value=bmi?bmi.toLocaleString('cs-CZ',{minimumFractionDigits:1,maximumFractionDigits:1}):'';return bmi}
+window.saveProfile0815=function(){for(const k of ['name','sex','age','height','weight','target','goal','kcalGoal'])if($(k))db.profile[k]=$(k).value;calculateBMI0815();raw();renderAll();const b=$('saveProfileBtn');if(b){b.textContent='✓ Uloženo';setTimeout(()=>b.textContent='Uložit profil',1400)}};
+const renderProfileBase0815=renderProfile;renderProfile=function(){renderProfileBase0815();if($('sex'))$('sex').value=db.profile.sex||'';calculateBMI0815()};
+if($('height'))$('height').addEventListener('input',calculateBMI0815);if($('weight'))$('weight').addEventListener('input',calculateBMI0815);
+
+// Laboratory fixed reference intervals; sex-specific where applicable.
+const LAB0815={glucose:{name:'Glukóza',unit:'mmol/l',all:[3.6,5.59]},hba1c:{name:'HbA1c',unit:'mmol/mol',all:[20,42]},chol:{name:'Celkový cholesterol',unit:'mmol/l',all:[2.9,5.0]},ldl:{name:'LDL',unit:'mmol/l',all:[1.2,3.0]},hdl:{name:'HDL',unit:'mmol/l',male:[1.0,2.1],female:[1.2,2.7],all:[1.0,2.7]},tg:{name:'Triglyceridy',unit:'mmol/l',all:[0.5,1.69]},creat:{name:'Kreatinin',unit:'µmol/l',male:[64,104],female:[49,90],all:[49,104]},egfr:{name:'eGFR',unit:'ml/min/1,73 m²',all:[90,120]},uric:{name:'Kyselina močová',unit:'µmol/l',male:[210,420],female:[150,350],all:[150,420]}};
+function labBounds0815(k){const r=LAB0815[k],sex=db.profile.sex||'';return r[sex]||r.all}
+function labRow0815(k){const r=LAB0815[k],[min,max]=labBounds0815(k),x=healthDraft.labs.items[k]||{},v=parseFloat(String(x.value||'').replace(',','.'));let status='';if(Number.isFinite(v))status=v<=min?'<span class="lab0815Status bad">🔴↓</span>':v>=max?'<span class="lab0815Status bad">🔴↑</span>':'<span class="lab0815Status ok">🟢✓</span>';return `<div class="lab0815Row"><span class="lab0815Name">${r.name}</span><span class="lab0815Bound">${String(min).replace('.',',')}</span><input class="lab0815Value" id="lab-${k}-value" inputmode="decimal" value="${esc(x.value||'')}"><span class="lab0815Bound">${String(max).replace('.',',')}</span><span class="lab0815Unit">${r.unit}</span>${status}</div>`}
+const renderHealthEditorBase0815=renderHealthEditor;renderHealthEditor=function(){if(healthStep!==3)return renderHealthEditorBase0815();const sex=db.profile.sex==='male'?'muž':db.profile.sex==='female'?'žena':'neuvedeno';$('healthStep').innerHTML=`<div class="healthTitle">Zdraví – Laboratoř</div><p class="scoreFilterNote">Referenční meze: ${sex}. Hodnoty na laboratorní zprávě mají přednost.</p><label>Datum odběru<input id="labDate" type="date" value="${healthDraft.labs.date||''}"></label><div class="lab0815Header"><span>Parametr</span><span>Min</span><span>Hodnota</span><span>Max</span><span>Jednotka</span><span>Stav</span></div>${Object.keys(LAB0815).map(labRow0815).join('')}<div class="healthBox">🔴↓ hodnota ≤ Min · 🔴↑ hodnota ≥ Max · 🟢✓ hodnota mezi Min a Max. Aplikace neurčuje diagnózu.</div>`;document.querySelectorAll('.healthTabs button').forEach((b,i)=>b.classList.toggle('active',i===healthStep))};
+// Store only measured values; Min/Max are fixed text from the rules above.
+const pullHealthBase0815=pullHealth;pullHealth=function(){if(healthStep!==3)return pullHealthBase0815();if(!healthDraft)return;healthDraft.labs.date=$('labDate')?.value||'';for(const k of Object.keys(LAB0815)){healthDraft.labs.items[k]??={};healthDraft.labs.items[k].value=$(`lab-${k}-value`)?.value||'';delete healthDraft.labs.items[k].min;delete healthDraft.labs.items[k].max}};
+
+// Final controlled render chain and deferred boot: no initialization before all overrides exist.
+renderAll=function(){renderMeals();renderPlan();renderShop0815();renderFoods();renderProfile();renderHealth()};
+seed();fillCats();renderAll();
