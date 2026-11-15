@@ -163,3 +163,37 @@ function renderShop0811(){
 renderShop=renderShop0811;
 renderAll=function(){renderMeals();renderPlan();renderShop0811();renderFoods();renderProfile();renderHealth()};
 renderShop0811();
+
+// ===== v0.8.12 – functional composer matching code.html =====
+let mealSearchMode0812='all';
+function setMealChip0812(btn){document.querySelectorAll('.mealSearchChips button').forEach(x=>x.classList.remove('active'));btn.classList.add('active')}
+function setMealType0812(type){$('mealType').value=type;document.querySelectorAll('#mealTypePills button').forEach(b=>b.classList.toggle('active',b.dataset.type===type));updateMealContext0812()}
+function updateMealContext0812(){let d=new Date(activeDate+'T12:00:00');$('mealContext').textContent=`${d.toLocaleDateString('cs-CZ',{weekday:'long',day:'numeric',month:'numeric'})} • ${$('mealType').value}`}
+function openMeal(date=dateKey(),id=null){
+ activeDate=date;editMeal=id;let m=db.meals.find(x=>x.id===id);ings=m?.ingredients?.map(x=>({...x}))||[];
+ $('mealTitle').textContent=m?'Upravit jídlo • Suroviny':'Sestavit jídlo • Hledání surovin';$('mealName').value=m?.name||'';setMealType0812(m?.type||'Snídaně');
+ $('ingredientSearch').value='';$('saveRecipe0812').checked=false;mealSearchMode0812='all';document.querySelectorAll('.mealSearchChips button').forEach((b,i)=>b.classList.toggle('active',i===0));renderMealSearch0812();renderIngs0812();$('mealDlg').showModal();
+}
+document.querySelectorAll('#mealTypePills button').forEach(btn=>btn.addEventListener('click',()=>setMealType0812(btn.dataset.type)));
+function mealRecent0812(){return JSON.parse(localStorage.getItem('mealRecent0812')||'[]')}
+function markRecent0812(id){let a=mealRecent0812().filter(x=>x!==id);a.unshift(id);localStorage.setItem('mealRecent0812',JSON.stringify(a.slice(0,12)))}
+function renderMealSearch0812(){
+ const box=$('mealSearchResults');if(!box)return;let q=$('ingredientSearch').value.trim().toLocaleLowerCase('cs'),foods=db.foods||[];
+ if(mealSearchMode0812==='recent'){const ids=mealRecent0812();foods=ids.map(id=>db.foods.find(f=>String(f.id)===String(id))).filter(Boolean)}
+ else foods=foods.filter(f=>!q||f.name.toLocaleLowerCase('cs').includes(q));
+ foods=foods.slice().sort((a,b)=>a.name.localeCompare(b.name,'cs')).slice(0,8);
+ box.innerHTML=foods.length?foods.map(f=>{let hs=typeof healthScore080==='function'?healthScore080(f):null;return `<div class="mealSearchResult"><div><b>${esc(f.name)}</b><small>100 g: ${Math.round(f.kcal||0)} kcal · B ${fmt(f.p)} g · T ${fmt(f.f)} g · S ${fmt(f.c)} g${hs?` · ${hs.label}`:''}</small></div><button type="button" aria-label="Přidat ${esc(f.name)}" onclick="addFood0812('${f.id}')">+</button></div>`}).join(''):`<div class="mealSearchResult"><div><b>Nenašli jste surovinu?</b><small>Vytvořte ji v databázi Potraviny.</small></div><button type="button" onclick="mealDlg.close();editFood()">+</button></div>`;
+}
+function addFood0812(id){let f=db.foods.find(x=>String(x.id)===String(id));if(!f)return;ings.push({foodId:f.id,name:f.name,grams:100,kcal:+f.kcal||0,p:+f.p||0,c:+f.c||0,f:+f.f||0});markRecent0812(f.id);renderIngs0812()}
+function mealTotals0812(){return ings.reduce((a,x)=>{let q=(+x.grams||0)/100;a.g+=+x.grams||0;a.k+=(+x.kcal||0)*q;a.p+=(+x.p||0)*q;a.c+=(+x.c||0)*q;a.f+=(+x.f||0)*q;return a},{g:0,k:0,p:0,c:0,f:0})}
+function renderIngs0812(){
+ const t=mealTotals0812();$('ingredientCount').textContent=`${ings.length} ${ings.length===1?'položka':ings.length>=2&&ings.length<=4?'položky':'položek'}`;
+ $('ings').innerHTML=ings.map((x,i)=>{let q=(+x.grams||0)/100;return `<article class="ingredientCompact"><div class="ingredientCompactName">${esc(x.name)}</div><div class="ingredientCompactBottom"><div class="ingredientMacros"><span><b class="b">B:</b> ${fmt((+x.p||0)*q)}g</span><span>•</span><span><b class="t">T:</b> ${fmt((+x.f||0)*q)}g</span><span>•</span><span><b class="s">S:</b> ${fmt((+x.c||0)*q)}g</span></div><div class="ingredientEdit"><div class="ingredientEditBox"><input type="number" min="1" value="${x.grams}" onchange="ings[${i}].grams=+this.value;renderIngs0812()"><span>g</span></div><button type="button" class="ingredientDelete" onclick="ings.splice(${i},1);renderIngs0812()">×</button></div></div></article>`}).join('');
+ $('portionWeight').textContent=`Součet surovin (${Math.round(t.g)} g)`;$('mealKcalTotal').textContent=`${Math.round(t.k)} kcal`;$('mealKjTotal').textContent=`${Math.round(t.k*4.184)} kJ`;$('mealProtein').textContent=`${fmt(t.p)} g`;$('mealCarbs').textContent=`${fmt(t.c)} g`;$('mealFat').textContent=`${fmt(t.f)} g`;$('mealSubmit0812').textContent=`Přidat jídlo do plánu (${Math.round(t.k)} kcal)`;
+}
+renderIngs=renderIngs0812;
+function saveMeal0812(e){
+ e.preventDefault();if(!ings.length)return alert('Přidej alespoň jednu surovinu.');let t=mealTotals0812(),m={id:editMeal||Date.now(),date:activeDate,type:$('mealType').value,name:$('mealName').value.trim(),kcal:Math.round(t.k),p:r1(t.p),c:r1(t.c),f:r1(t.f),ingredients:ings.map(x=>({...x}))};let i=db.meals.findIndex(x=>x.id===editMeal);i>=0?db.meals[i]=m:db.meals.push(m);
+ if($('saveRecipe0812').checked){db.recipes??=[];let ri=db.recipes.findIndex(x=>x.name===m.name);let recipe={id:ri>=0?db.recipes[ri].id:Date.now(),name:m.name,type:m.type,ingredients:m.ingredients};ri>=0?db.recipes[ri]=recipe:db.recipes.push(recipe)}
+ $('mealDlg').close();save();
+}
