@@ -1,16 +1,22 @@
 'use strict';
 // Open Food Facts catalog sync for Jidelnicek+ 0.8.25.
-const CATALOG_PAGE_SIZE_0825=100, CATALOG_DELAY_0825=7000;
+const CATALOG_LIMIT_0825=5000, CATALOG_PAGE_SIZE_0825=100, CATALOG_DELAY_0825=7000;
 const DOWNLOAD_HARD_LIMIT_0826=20*1024*1024,DOWNLOAD_SOFT_LIMIT_0826=17*1024*1024,REQUEST_RESERVE_0826=3*1024*1024;
-const CATALOG_DB_0825='JidelnicekFoodCatalog', CATALOG_STORE_0825='foods', META_STORE_0825='meta';
+const CATALOG_DB_0825='JidelnicekFoodCatalog', CATALOG_STORE_0825='foods', META_STORE_0825='meta', PAGE_LOG_STORE_0834='pageLog';
 const CATALOG_CATS_0825=['Ovoce','Zelenina','Maso a ryby','Mléčné výrobky','Vejce','Obiloviny a přílohy','Luštěniny','Ořechy a semena','Tuky a oleje','Nápoje','Ostatní'];
 let catalogCancel0825=false,catalogRunning0825=false,catalogTimer0825=null;
 const sleep0825=ms=>new Promise(r=>catalogTimer0825=setTimeout(r,ms));
 function mb0826(bytes){return (Number(bytes||0)/1024/1024).toLocaleString('cs-CZ',{minimumFractionDigits:1,maximumFractionDigits:1})}
 async function fetchJsonMeasured0826(url){const response=await fetch(url,{headers:{Accept:'application/json'}});if(response.status===429)return{response,bytes:0,data:null};const buffer=await response.arrayBuffer(),bytes=buffer.byteLength,text=new TextDecoder().decode(buffer);let data;try{data=JSON.parse(text)}catch{throw new Error('Open Food Facts vrátil neplatná data.')}return{response,bytes,data}}
-function catalogDb0825(){return new Promise((ok,no)=>{const r=indexedDB.open(CATALOG_DB_0825,1);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(CATALOG_STORE_0825)){const s=d.createObjectStore(CATALOG_STORE_0825,{keyPath:'ean'});s.createIndex('nameLower','nameLower');s.createIndex('category','category');s.createIndex('updatedAt','updatedAt')}if(!d.objectStoreNames.contains(META_STORE_0825))d.createObjectStore(META_STORE_0825)};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
+function catalogDb0825(){return new Promise((ok,no)=>{const r=indexedDB.open(CATALOG_DB_0825,2);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(CATALOG_STORE_0825)){const s=d.createObjectStore(CATALOG_STORE_0825,{keyPath:'ean'});s.createIndex('nameLower','nameLower');s.createIndex('category','category');s.createIndex('updatedAt','updatedAt')}if(!d.objectStoreNames.contains(META_STORE_0825))d.createObjectStore(META_STORE_0825);if(!d.objectStoreNames.contains(PAGE_LOG_STORE_0834)){const p=d.createObjectStore(PAGE_LOG_STORE_0834,{keyPath:'key'});p.createIndex('checkedAt','checkedAt');p.createIndex('mode','mode')} };r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 async function catalogMetaGet0825(key){const d=await catalogDb0825();return new Promise((ok,no)=>{const r=d.transaction(META_STORE_0825).objectStore(META_STORE_0825).get(key);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 async function catalogMetaPut0825(key,value){const d=await catalogDb0825();return new Promise((ok,no)=>{const t=d.transaction(META_STORE_0825,'readwrite');t.objectStore(META_STORE_0825).put(value,key);t.oncomplete=ok;t.onerror=()=>no(t.error)})}
+const PAGE_LOG_TTL_0834=30*24*60*60*1000;
+async function pageLogGet0834(key){const d=await catalogDb0825();return new Promise((ok,no)=>{const r=d.transaction(PAGE_LOG_STORE_0834).objectStore(PAGE_LOG_STORE_0834).get(key);r.onsuccess=()=>ok(r.result||null);r.onerror=()=>no(r.error)})}
+async function pageLogPut0834(value){const d=await catalogDb0825();return new Promise((ok,no)=>{const t=d.transaction(PAGE_LOG_STORE_0834,'readwrite');t.objectStore(PAGE_LOG_STORE_0834).put(value);t.oncomplete=ok;t.onerror=()=>no(t.error)})}
+async function pageLogCount0834(){const d=await catalogDb0825();return new Promise((ok,no)=>{const r=d.transaction(PAGE_LOG_STORE_0834).objectStore(PAGE_LOG_STORE_0834).count();r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
+function pageLogKey0834(page){return `cz:last_modified_t:${CATALOG_PAGE_SIZE_0825}:${page}`}
+function pageLogFresh0834(x){return !!x&&Date.now()-new Date(x.checkedAt).getTime()<PAGE_LOG_TTL_0834}
 async function catalogCount0825(){const d=await catalogDb0825();return new Promise((ok,no)=>{const r=d.transaction(CATALOG_STORE_0825).objectStore(CATALOG_STORE_0825).count();r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 async function catalogBatchPut0825(items){if(!items.length)return;const d=await catalogDb0825();return new Promise((ok,no)=>{const t=d.transaction(CATALOG_STORE_0825,'readwrite'),s=t.objectStore(CATALOG_STORE_0825);items.forEach(x=>s.put(x));t.oncomplete=ok;t.onerror=()=>no(t.error)})}
 async function catalogAll0825(){const d=await catalogDb0825();return new Promise((ok,no)=>{const r=d.transaction(CATALOG_STORE_0825).objectStore(CATALOG_STORE_0825).getAll();r.onsuccess=()=>ok(r.result||[]);r.onerror=()=>no(r.error)})}
@@ -39,16 +45,7 @@ function catalogUrl0825(page){const fields=['code','product_name','product_name_
 function ensureCatalogUi0825(){if(document.getElementById('refreshCatalog0825'))return;const foods=document.getElementById('foods'),card=foods?.querySelector('.card');if(!card)return;card.insertAdjacentHTML('beforeend',`<div class="catalogActions0825"><button id="refreshCatalog0825" class="primary" type="button" onclick="confirmCatalogRefresh0825()">Obnovit katalog potravin</button><button type="button" onclick="showCatalogStatus0825()">Stav katalogu</button></div><div id="catalogMeta0825" class="catalogMeta0825">Katalog Open Food Facts nebyl načten.</div>`);document.body.insertAdjacentHTML('beforeend',`<dialog id="catalogDialog0825" class="catalogDialog0825"><div class="dialogHead"><h2 id="catalogTitle0825">Obnova katalogu</h2><button type="button" onclick="catalogDialog0825.close()">×</button></div><div id="catalogBody0825"></div></dialog>`);updateCatalogMeta0825()}
 async function updateCatalogMeta0825(){const el=document.getElementById('catalogMeta0825');if(!el)return;const count=await catalogCount0825(),meta=await catalogMetaGet0825('sync');el.innerHTML=`Katalog: <b>${count.toLocaleString('cs-CZ')}</b> produktů · Poslední obnova: <b>${meta?.completedAt?new Date(meta.completedAt).toLocaleString('cs-CZ'):'nikdy'}</b><br>Zdroj: Open Food Facts (ODbL), komunitní data mohou být neúplná nebo nepřesná.`}
 window.confirmCatalogRefresh0825=async function(){if(catalogRunning0825)return;const count=await catalogCount0825(),state=await catalogMetaGet0825('sync'),paused=['paused-data-limit','paused-user','paused-error'].includes(state?.status);document.getElementById('catalogBody0825').innerHTML=`<p>Synchronizace se spustí pouze po stisku tlačítka <b>Spustit</b>. Nikdy neprobíhá automaticky ani na pozadí.</p><div class="catalogNotice0825">Datový limit jednoho ručně spuštěného běhu je 20 MiB. Při dosažení limitu se průběh uloží a pokračování vyžaduje další ruční spuštění.</div><label>Režim<select id="catalogMode0826"><option value="quick">Rychlá aktualizace</option><option value="fill">Doplnit katalog do 5 000</option><option value="full">Úplná kontrola katalogu</option></select></label><p>Aktuálně uloženo: <b>${count.toLocaleString('cs-CZ')}</b>${paused?` · nedokončená obnova od stránky ${state.page||1}`:''}</p><menu><button type="button" onclick="catalogDialog0825.close()">Zrušit</button><button class="primary" type="button" onclick="startCatalogRefresh0826()">${paused?'Pokračovat ručně':'Spustit'}</button></menu>`;document.getElementById('catalogDialog0825').showModal()}
-function syncView0825(s){
-  if(typeof window.ensureCatalogShell0833==='function')window.ensureCatalogShell0833();
-  const set=(id,value)=>{const e=document.getElementById(id);if(e)e.textContent=value};
-  const val=(id,value,max)=>{const e=document.getElementById(id);if(e){e.max=max||100;e.value=value||0}};
-  const target=Number(s.sourceCount||0),local=Number(s.accepted||s.catalogCount||0),coverage=target>0?Math.min(100,local/target*100):0;
-  set('catalogStatus0833',catalogStatusLabel0829(s.status));if(s.completedAt)set('catalogCompleted0833',new Date(s.completedAt).toLocaleString('cs-CZ'));set('catalogSourceCount0833',target?target.toLocaleString('cs-CZ'):'zjišťuje se…');set('catalogLocalCount0833',local.toLocaleString('cs-CZ'));set('catalogCoverage0833',target?coverage.toLocaleString('cs-CZ',{maximumFractionDigits:1})+' %':'–');
-  set('catalogChecked0833',Number(s.scanned||0).toLocaleString('cs-CZ'));set('catalogNew0833',Number(s.newProducts||0).toLocaleString('cs-CZ'));set('catalogUpdated0833',Number(s.updatedProducts||0).toLocaleString('cs-CZ'));set('catalogSkipped0833',Number(s.skipped||0).toLocaleString('cs-CZ'));set('catalogPage0833',Number(s.page||1).toLocaleString('cs-CZ'));set('catalogData0833',`${mb0826(s.downloadedBytes)} / 20 MiB`);set('catalogModeView0833',({quick:'Rychlá aktualizace',fill:'Doplnit katalog',full:'Úplná kontrola'})[s.mode]||'–');
-  val('catalogCoverageProgress0833',coverage,100);val('catalogDataProgress0833',Math.min(20,Number(s.downloadedBytes||0)/1024/1024),20);
-  const start=document.getElementById('catalogStart0833'),stop=document.getElementById('catalogStop0833'),mode=document.getElementById('catalogMode0826');if(start)start.hidden=s.status==='running';if(stop)stop.hidden=s.status!=='running';if(mode)mode.disabled=s.status==='running';
-}  
+function syncView0825(s){const dataPct=Math.min(100,Math.round((s.downloadedBytes||0)/DOWNLOAD_HARD_LIMIT_0826*100));document.getElementById('catalogBody0825').innerHTML=`<progress class="catalogProgress0825" max="5000" value="${s.accepted}"></progress><div class="catalogStats0825"><span>Režim</span><b>${s.mode}</b><span>Cíl katalogu</span><b>5 000</b><span>Staženo záznamů</span><b>${s.scanned.toLocaleString('cs-CZ')}</b><span>Produktů v katalogu</span><b>${s.accepted.toLocaleString('cs-CZ')}</b><span>Přeskočeno</span><b>${s.skipped.toLocaleString('cs-CZ')}</b><span>Nové na poslední stránce</span><b>${(s.newOnLastPage||0).toLocaleString('cs-CZ')}</b><span>Stránek v logu</span><b>${s.pagesLogged||0}</b><span>Přeskočeno dle logu</span><b>${s.pagesSkippedFromLog||0}</b><span>Stránek bez nového EAN</span><b>${s.noChangePages||0}</b><span>Data tohoto běhu</span><b>${mb0826(s.downloadedBytes)} / 20 MiB</b></div><progress class="catalogProgress0825" max="100" value="${dataPct}"></progress><p>${s.downloadedBytes>=DOWNLOAD_SOFT_LIMIT_0826?'Blíží se datový limit. Další dávka se již nespustí.':`Stránka API: ${s.page}.`}</p><button class="catalogCancel0825" type="button" onclick="cancelCatalogRefresh0825()">Zrušit obnovu</button>`}
 window.startCatalogRefresh0826=async function(){
   if(catalogRunning0825)return;
   if(!navigator.onLine)return alert('Obnova katalogu vyžaduje připojení k internetu.');
@@ -62,7 +59,7 @@ window.startCatalogRefresh0826=async function(){
   state.catalogCount=actualCount;
   state.mode=mode;state.trigger='manual';state.startedByUser=true;state.status='running';
   state.downloadedBytes=0;state.downloadLimitBytes=DOWNLOAD_HARD_LIMIT_0826;state.startedAt=new Date().toISOString();state.updatedAt=state.startedAt;
-  state.error=null;state.retryReason=null;state.serverRetryCount=0;state.noChangePages=0;state.duplicatePages=0;state.lastPageSignature=null;state.newProducts=0;state.updatedProducts=0;
+  state.error=null;state.retryReason=null;state.serverRetryCount=0;state.noChangePages=0;state.duplicatePages=0;state.lastPageSignature=null;
   const existingProducts=await catalogAll0825();
   const knownEans=new Set(existingProducts.map(x=>x.ean));
   const startPage=state.page||1;
@@ -73,8 +70,10 @@ window.startCatalogRefresh0826=async function(){
   try{
     while(!catalogCancel0825){
       state.accepted=await catalogCount0825();state.catalogCount=state.accepted;
-      
+      if(mode==='fill'&&state.accepted>=CATALOG_LIMIT_0825){state.status='completed';break}
       if(mode==='quick'&&pagesProcessed>=QUICK_MAX_PAGES_0830){state.status='completed';break}
+      const pageKey0834=pageLogKey0834(state.page),logged0834=await pageLogGet0834(pageKey0834);
+      if(mode!=='full'&&pageLogFresh0834(logged0834)){state.pagesSkippedFromLog=(state.pagesSkippedFromLog||0)+1;state.page++;state.updatedAt=new Date().toISOString();await catalogMetaPut0825('sync',state);syncView0825(state);continue}
       const remaining=DOWNLOAD_HARD_LIMIT_0826-state.downloadedBytes;
       if(remaining<REQUEST_RESERVE_0826||state.downloadedBytes>=DOWNLOAD_SOFT_LIMIT_0826){state.status='paused-data-limit';break}
 
@@ -91,7 +90,7 @@ window.startCatalogRefresh0826=async function(){
       state.retryReason=null;
       state.downloadedBytes+=result.bytes;
       if(state.downloadedBytes>DOWNLOAD_HARD_LIMIT_0826){state.status='paused-data-limit';break}
-      state.sourceCount=Number(result.data?.count)||state.sourceCount||0;const products=Array.isArray(result.data?.products)?result.data.products:[];
+      const products=Array.isArray(result.data?.products)?result.data.products:[];
       if(!products.length){state.status='completed';state.completionReason='end-of-results';break}
       const pageCodes=products.map(p=>String(p?.code||'')).filter(Boolean);
       const pageSignature=pageCodes.join('|');
@@ -105,8 +104,8 @@ window.startCatalogRefresh0826=async function(){
         const x=normalizeProduct0825(rawProduct);
         if(!x){state.skipped++;continue}
         const exists=knownEans.has(x.ean);
-        
-        if(!exists){knownEans.add(x.ean);state.accepted++;state.newProducts=(state.newProducts||0)+1}else state.updatedProducts=(state.updatedProducts||0)+1;
+        if(!exists&&state.accepted>=CATALOG_LIMIT_0825){state.skipped++;continue}
+        if(!exists){knownEans.add(x.ean);state.accepted++}
         normalized.push(x)
       }
       const beforeCount=state.accepted;
@@ -117,23 +116,24 @@ window.startCatalogRefresh0826=async function(){
       const newOnPage=Math.max(0,state.accepted-beforeCount);
       state.newOnLastPage=newOnPage;
       state.noChangePages=newOnPage===0?(state.noChangePages||0)+1:0;
+      await pageLogPut0834({key:pageKey0834,page:state.page,mode,checkedAt:new Date().toISOString(),signature:pageSignature,apiCount:products.length,accepted:normalized.length,newProducts:newOnPage,bytes:result.bytes});state.pagesLogged=await pageLogCount0834();
       state.page++;pagesProcessed++;state.updatedAt=new Date().toISOString();
       await catalogMetaPut0825('sync',state);syncView0825(state);await updateCatalogMeta0825();
-      
+      if(mode==='fill'&&state.accepted>=CATALOG_LIMIT_0825){state.status='completed';state.completionReason='catalog-limit';break}
       if(mode==='fill'&&state.noChangePages>=20){state.status='completed';state.completionReason='no-new-products';break}
       await sleep0825(CATALOG_DELAY_0825)
     }
     if(catalogCancel0825){state.status='paused-user';state.cancelledAt=new Date().toISOString()}
     else if(state.status==='running')state.status='completed';
-    if(state.status==='completed'){state.completedAt=new Date().toISOString();state.page=1}
+    if(state.status==='completed'){state.completedAt=new Date().toISOString()}
     state.accepted=await catalogCount0825();state.catalogCount=state.accepted;state.updatedAt=new Date().toISOString();
     await catalogMetaPut0825('sync',state);
-    const reason=state.status==='paused-data-limit'?`Aktualizace byla pozastavena před překročením limitu. Staženo ${mb0826(state.downloadedBytes)} MiB z 20 MiB. Pokračování vyžaduje další ruční spuštění.`:state.status==='paused-user'?'Obnova byla zrušena. Pokračování vyžaduje další ruční spuštění.':state.completionReason==='duplicate-pages'?'Open Food Facts opakovaně vrátil stejnou stránku. Obnova byla bezpečně ukončena bez ztráty uložených dat.':state.completionReason==='no-new-products'?'Ve 20 po sobě jdoucích stránkách nebyl nalezen nový EAN. Režim Doplnit byl korektně ukončen.':state.completionReason==='end-of-results'?'Byly zpracovány všechny dostupné stránky Open Food Facts pro zvolený filtr.':mode==='quick'?'Rychlá aktualizace dokončila svou dávku.':'Synchronizace byla dokončena.';
-    syncView0825(state);const msg=document.getElementById('catalogMessage0833');if(msg){msg.textContent=reason;msg.hidden=false;}
+    const reason=state.status==='paused-data-limit'?`Aktualizace byla pozastavena před překročením limitu. Staženo ${mb0826(state.downloadedBytes)} MiB z 20 MiB. Pokračování vyžaduje další ruční spuštění.`:state.status==='paused-user'?'Obnova byla zrušena. Pokračování vyžaduje další ruční spuštění.':state.completionReason==='duplicate-pages'?'Open Food Facts opakovaně vrátil stejnou stránku. Obnova byla bezpečně ukončena bez ztráty uložených dat.':state.completionReason==='no-new-products'?'Ve 20 po sobě jdoucích stránkách nebyl nalezen nový EAN. Režim Doplnit byl korektně ukončen.':mode==='fill'&&state.accepted>=CATALOG_LIMIT_0825?'Katalog dosáhl limitu 5 000 produktů.':mode==='quick'?'Rychlá aktualizace dokončila svou dávku.':'Synchronizace byla dokončena.';
+    document.getElementById('catalogBody0825').innerHTML=`<div class="card catalogResult0825"><h3>${state.status==='completed'?'Obnova dokončena':'Obnova pozastavena'}</h3><p>${reason}</p><p>Produktů v katalogu: <b>${state.accepted.toLocaleString('cs-CZ')}</b> · Zkontrolováno v běhu: <b>${state.scanned.toLocaleString('cs-CZ')}</b> · Data běhu: <b>${mb0826(state.downloadedBytes)} MiB</b></p></div><button class="primary" type="button" onclick="catalogDialog0825.close()">Zavřít</button>`;
     await updateCatalogMeta0825();renderCatalogFoods0825()
   }catch(e){
     state.status='paused-error';state.error=String(e.message||e);state.accepted=await catalogCount0825();state.catalogCount=state.accepted;state.updatedAt=new Date().toISOString();await catalogMetaPut0825('sync',state);
-    syncView0825(state);const msg=document.getElementById('catalogMessage0833');if(msg){msg.textContent='Obnovu se nepodařilo dokončit: '+String(e.message||e)+'. Uložená data zůstala zachována.';msg.hidden=false;}
+    document.getElementById('catalogBody0825').innerHTML=`<div class="catalogNotice0825"><b>Obnovu se nepodařilo dokončit.</b><br>${String(e.message||e)}<br>Uložené produkty zůstaly zachované. Pokračování se spustí pouze dalším ručním stiskem tlačítka.</div><button type="button" onclick="catalogDialog0825.close()">Zavřít</button>`
   }finally{catalogRunning0825=false}
 };
 window.cancelCatalogRefresh0825=function(){catalogCancel0825=true};
