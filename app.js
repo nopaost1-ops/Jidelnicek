@@ -49,3 +49,44 @@ function renderHealth(){let sum=$('healthSummary'),lock=$('lockHealthBtn');if(!h
 function healthLevel(f){if(!f||!healthData)return'neutral';let n=f.name.toLowerCase(),a=healthData.allergies||[],r=healthData.recommendations||[],c=healthData.conditions||[];if(a.includes('Arašídy')&&n.includes('araš'))return'bad';if(a.includes('Mléko')&&f.category==='Mléčné výrobky')return'bad';if(a.includes('Vejce')&&f.category==='Vejce')return'bad';if(a.includes('Ryby')&&['Losos','Treska','Tuňák','Pstruh','Makrela'].includes(f.name))return'bad';if(a.includes('Korýši')&&f.name==='Krevety')return'bad';if((r.includes('Omezit nasycené tuky')||c.includes('Vysoký cholesterol / porucha lipidů')||c.includes('Zvýšené triglyceridy'))&&['Máslo','Eidam','Vepřová kýta'].includes(f.name))return'limit';if(r.includes('Omezit jednoduché cukry')&&['Med','Hořká čokoláda'].includes(f.name))return'limit';return'good'}function healthBadge(f){let l=healthLevel(f);return{bad:'🔴 nevhodné',limit:'🟠 omezit',good:'🟢 vhodné',neutral:'⚪ bez vyhodnocení'}[l]}
 function exportNormal(){let x={profile:db.profile,meals:db.meals,shopping:db.shopping,foods:db.foods};let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(x,null,2)],{type:'application/json'}));a.download='jidelnicek-zaloha.json';a.click()}
 function renderAll(){renderMeals();renderPlan();renderShop();renderFoods();renderProfile();renderHealth()}seed();fillCats();renderAll();
+
+
+// ===== v0.8.20 – laboratory layout: Min | measured | Max | unit | status =====
+const LABREF0820={
+ glucose:{name:'Glukóza',unit:'mmol/l',all:[3.6,5.59]},
+ hba1c:{name:'HbA1c',unit:'mmol/mol',all:[20,42]},
+ chol:{name:'Celkový cholesterol',unit:'mmol/l',all:[2.9,5.0]},
+ ldl:{name:'LDL cholesterol',unit:'mmol/l',all:[1.2,3.0]},
+ hdl:{name:'HDL cholesterol',unit:'mmol/l',male:[1.0,2.1],female:[1.2,2.7],all:[1.0,2.7]},
+ tg:{name:'Triglyceridy',unit:'mmol/l',all:[0.50,1.69]},
+ creat:{name:'Kreatinin',unit:'µmol/l',male:[64,104],female:[49,90],all:[49,104]},
+ egfr:{name:'eGFR',unit:'ml/min/1,73 m²',all:[90,120]},
+ uric:{name:'Kyselina močová',unit:'µmol/l',male:[210,420],female:[150,350],all:[150,420]}
+};
+function labBounds0820(key){const r=LABREF0820[key],sex=db.profile?.sex||'';return r[sex]||r.all}
+function labStatus0820(value,min,max){const v=parseFloat(String(value??'').replace(',','.'));if(!Number.isFinite(v))return{cls:'none',txt:'–'};if(v<min)return{cls:'bad',txt:'↓'};if(v>max)return{cls:'bad',txt:'↑'};return{cls:'ok',txt:'✓'}}
+function labRow0820(key){const r=LABREF0820[key],[min,max]=labBounds0820(key),item=healthDraft.labs.items[key]||{},st=labStatus0820(item.value,min,max);return `<div class="lab0820Block"><div class="lab0820Name">${r.name}</div><div class="lab0820Row"><label><span>Min</span><input class="lab0820Fixed" value="${String(min).replace('.',',')}" readonly tabindex="-1" aria-label="${r.name} minimum"></label><label><span>${r.name}</span><input id="lab-${key}-value" class="lab0820Value" inputmode="decimal" value="${esc(item.value||'')}" aria-label="${r.name} měřená hodnota" oninput="evaluateLab0821('${key}',this.value)"></label><label><span>Max</span><input class="lab0820Fixed" value="${String(max).replace('.',',')}" readonly tabindex="-1" aria-label="${r.name} maximum"></label><span class="lab0820Unit">${r.unit}</span><span id="lab-${key}-status" class="lab0820State ${st.cls}">${st.txt}</span></div></div>`}
+const renderHealthEditorPre0820=renderHealthEditor;
+renderHealthEditor=function(){
+ normalizeHealthDraft();
+ if(healthStep!==3)return renderHealthEditorPre0820();
+ const sex=db.profile?.sex==='male'?'Muž':db.profile?.sex==='female'?'Žena':'Neuvedeno';
+ $('healthStep').innerHTML=`<div class="healthTitle">Zdraví – Laboratoř</div><label>Datum odběru<input id="labDate" type="date" value="${healthDraft.labs.date||''}"></label><div class="lab0820Sex">Referenční meze pro: <b>${sex}</b></div>${Object.keys(LABREF0820).map(labRow0820).join('')}<div class="healthBox">Min a Max jsou pouze pro čtení. ✓ = hodnota v rozmezí, ↓ = pod rozmezím, ↑ = nad rozmezím. Referenční meze na konkrétní laboratorní zprávě mají přednost.</div>`;
+ document.querySelectorAll('.healthTabs button').forEach((b,i)=>b.classList.toggle('active',i===healthStep));
+};
+// Capture only measured value. Min/Max are constants and are never written into HealthVault.
+const captureHealthTabPre0820=captureHealthTab;
+captureHealthTab=function(fromStep){
+ if(fromStep!==3)return captureHealthTabPre0820(fromStep);
+ normalizeHealthDraft();const date=$('labDate');if(date)healthDraft.labs.date=date.value||'';
+ for(const key of Object.keys(LABREF0820)){healthDraft.labs.items[key]??={};const input=document.getElementById(`lab-${key}-value`);if(input)healthDraft.labs.items[key].value=input.value||'';delete healthDraft.labs.items[key].min;delete healthDraft.labs.items[key].max;}
+};
+
+
+// ===== v0.8.21 – live laboratory evaluation while typing =====
+window.evaluateLab0821=function(key,rawValue){
+ const r=LABREF0820[key];if(!r)return;const bounds=labBounds0820(key),min=bounds[0],max=bounds[1],status=labStatus0820(rawValue,min,max),el=document.getElementById(`lab-${key}-status`);if(!el)return;
+ el.className=`lab0820State ${status.cls}`;el.textContent=status.txt;
+ // Keep the draft in sync immediately, without waiting for tab navigation or a rerender.
+ normalizeHealthDraft();healthDraft.labs.items[key]??={};healthDraft.labs.items[key].value=rawValue||'';delete healthDraft.labs.items[key].min;delete healthDraft.labs.items[key].max;
+};
