@@ -1,0 +1,31 @@
+name: Update Czech food catalog
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: update-food-catalog
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build Czech snapshot
+        env:
+          MAX_PRODUCTS: '20000'
+          MAX_UNCOMPRESSED_CHUNK: '6291456'
+          USER_AGENT: 'JidelnicekPlus-CatalogBuilder/1.0 (GitHub Actions)'
+        run: node scripts/build-cz-catalog.mjs
+      - name: Commit snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/catalog
+          git diff --cached --quiet || (git commit -m "Update Czech food catalog snapshot" && git push)

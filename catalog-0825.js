@@ -2,7 +2,6 @@
 // Open Food Facts catalog sync for Jidelnicek+ 0.8.25.
 const CATALOG_PAGE_SIZE_0825=100, CATALOG_DELAY_0825=7000;
 const DOWNLOAD_HARD_LIMIT_0826=20*1024*1024,DOWNLOAD_SOFT_LIMIT_0826=17*1024*1024,REQUEST_RESERVE_0826=3*1024*1024;
-const CATALOG_PRODUCT_TARGET_0841=20000,CATALOG_DB_SOFT_LIMIT_0841=65*1024*1024,CATALOG_DB_HARD_LIMIT_0841=80*1024*1024,MIN_FREE_QUOTA_0841=200*1024*1024;
 const CATALOG_DB_0825='JidelnicekFoodCatalog', CATALOG_STORE_0825='foods', META_STORE_0825='meta', PAGE_LOG_STORE_0835='pageLog';
 const CATALOG_CATS_0825=['Ovoce','Zelenina','Maso a ryby','Mléčné výrobky','Vejce','Obiloviny a přílohy','Luštěniny','Ořechy a semena','Tuky a oleje','Nápoje','Ostatní'];
 let catalogCancel0825=false,catalogRunning0825=false,catalogTimer0825=null;
@@ -56,106 +55,9 @@ function syncView0825(s){
   val('catalogCoverageProgress0833',coverage,100);val('catalogDataProgress0833',Math.min(20,Number(s.downloadedBytes||0)/1024/1024),20);
   const start=document.getElementById('catalogStart0833'),stop=document.getElementById('catalogStop0833'),mode=document.getElementById('catalogMode0826');if(start)start.hidden=s.status==='running';if(stop)stop.hidden=s.status!=='running';if(mode)mode.disabled=s.status==='running';
 }  
-async function catalogStorageEstimate0841(){const products=await catalogAll0825();const payloadBytes=new TextEncoder().encode(JSON.stringify(products)).byteLength;let storage={};try{storage=await navigator.storage?.estimate?.()||{}}catch{}return{products:products.length,payloadBytes,usage:Number(storage.usage||0),quota:Number(storage.quota||0),free:Math.max(0,Number(storage.quota||0)-Number(storage.usage||0))}}
-window.startCatalogRefresh0826=async function(){
-  if(catalogRunning0825)return;
-  if(!navigator.onLine)return alert('Obnova katalogu vyžaduje připojení k internetu.');
-  const mode=document.getElementById('catalogMode0826')?.value||'quick';
-  const storage0841=await catalogStorageEstimate0841();
-  if(storage0841.products>=CATALOG_PRODUCT_TARGET_0841)return alert('Katalog dosáhl cíle 20 000 produktů.');
-  if(storage0841.payloadBytes>=CATALOG_DB_HARD_LIMIT_0841)return alert('Lokální katalog dosáhl hard limitu 80 MiB. Synchronizace nebyla spuštěna.');
-  if(storage0841.free>0&&storage0841.free<MIN_FREE_QUOTA_0841)return alert('Pro bezpečnou aktualizaci je potřeba alespoň 200 MiB volné browserové kvóty.');
-  if(storage0841.payloadBytes>=CATALOG_DB_SOFT_LIMIT_0841){const msg=document.getElementById('catalogMessage0833');if(msg){msg.textContent='Upozornění: lokální katalog překročil soft limit 65 MiB. Synchronizace bude pokračovat pouze do hard limitu 80 MiB.';msg.hidden=false}}
-  catalogRunning0825=true;catalogCancel0825=false;
-  const previous=await catalogMetaGet0825('sync');
-  const canResume=previous&&['paused-data-limit','paused-user','paused-error'].includes(previous.status)&&previous.mode===mode;
-  const actualCount=await catalogCount0825();
-  let state=canResume?{...previous}:{page:1,scanned:0,saved:0,skipped:0};
-  state.accepted=actualCount; // jediný autoritativní počet = unikátní EAN v IndexedDB
-  state.catalogCount=actualCount;
-  state.mode=mode;state.trigger='manual';state.startedByUser=true;state.status='running';
-  state.downloadedBytes=0;state.downloadLimitBytes=DOWNLOAD_HARD_LIMIT_0826;state.startedAt=new Date().toISOString();state.updatedAt=state.startedAt;
-  state.error=null;state.retryReason=null;state.serverRetryCount=0;state.noChangePages=0;state.duplicatePages=0;state.lastPageSignature=null;state.newProducts=0;state.updatedProducts=0;state.pagesSkippedFromLog=0;state.pagesLogged=await pageLogCount0835();
-  const existingProducts=await catalogAll0825();
-  const knownEans=new Set(existingProducts.map(x=>x.ean));
-  const startPage=state.page||1;
-  const QUICK_MAX_PAGES_0830=10;
-  let pagesProcessed=0;
-  document.getElementById('catalogTitle0825').textContent='Ruční obnova katalogu';
-  syncView0825(state);
-  try{
-    while(!catalogCancel0825){
-      state.accepted=await catalogCount0825();state.catalogCount=state.accepted;
-      
-      if(mode==='quick'&&pagesProcessed>=QUICK_MAX_PAGES_0830){state.status='completed';break}
-      const pageKey0835=pageLogKey0835(state.page),loggedPage0835=await pageLogGet0835(pageKey0835);
-      if(mode!=='full'&&pageLogFresh0835(loggedPage0835)){state.pagesSkippedFromLog++;state.page++;state.updatedAt=new Date().toISOString();await catalogMetaPut0825('sync',state);syncView0825(state);continue}
-      const remaining=DOWNLOAD_HARD_LIMIT_0826-state.downloadedBytes;
-      if(remaining<REQUEST_RESERVE_0826||state.downloadedBytes>=DOWNLOAD_SOFT_LIMIT_0826){state.status='paused-data-limit';break}
-
-      let result=null,requestOk=false,networkAttempts=0;
-      while(!requestOk&&!catalogCancel0825){
-        try{result=await fetchJsonMeasured0826(catalogUrl0825(state.page))}
-        catch(err){networkAttempts++;state.retryReason='síťová chyba';state.updatedAt=new Date().toISOString();await catalogMetaPut0825('sync',state);syncView0825(state);if(networkAttempts>=3)throw err;await sleep0825(15000);continue}
-        if(result.response.status===429){state.retryReason='HTTP 429';state.updatedAt=new Date().toISOString();await catalogMetaPut0825('sync',state);syncView0825(state);await sleep0825(60000);continue}
-        if(result.response.status>=500&&result.response.status<600){networkAttempts++;state.retryReason=`HTTP ${result.response.status}`;state.updatedAt=new Date().toISOString();await catalogMetaPut0825('sync',state);syncView0825(state);if(networkAttempts>=3)throw new Error(`Open Food Facts API: HTTP ${result.response.status}`);await sleep0825(15000);continue}
-        if(!result.response.ok)throw new Error(`Open Food Facts API: HTTP ${result.response.status}`);
-        requestOk=true;
-      }
-      if(catalogCancel0825)break;
-      state.retryReason=null;
-      state.downloadedBytes+=result.bytes;
-      if(state.downloadedBytes>DOWNLOAD_HARD_LIMIT_0826){state.status='paused-data-limit';break}
-      state.sourceCount=Number(result.data?.count)||state.sourceCount||0;const products=Array.isArray(result.data?.products)?result.data.products:[];
-      if(!products.length){state.status='completed';state.completionReason='end-of-results';break}
-      const pageCodes=products.map(p=>String(p?.code||'')).filter(Boolean);
-      const pageSignature=pageCodes.join('|');
-      if(pageSignature&&pageSignature===state.lastPageSignature){state.duplicatePages=(state.duplicatePages||0)+1}else state.duplicatePages=0;
-      state.lastPageSignature=pageSignature;
-      if(state.duplicatePages>=2){state.status='completed';state.completionReason='duplicate-pages';break}
-
-      const normalized=[];
-      let allowNew0841=state.accepted<CATALOG_PRODUCT_TARGET_0841;
-      for(const rawProduct of products){
-        state.scanned++;
-        const x=normalizeProduct0825(rawProduct);
-        if(!x){state.skipped++;continue}
-        const exists=knownEans.has(x.ean);
-        
-        if(!exists){knownEans.add(x.ean);state.accepted++;state.newProducts=(state.newProducts||0)+1}else state.updatedProducts=(state.updatedProducts||0)+1;
-        normalized.push(x)
-      }
-      const beforeCount=state.accepted;
-      await catalogBatchPut0825(normalized);
-      mergeMaterialized0825(normalized);
-      state.saved+=normalized.length;
-      state.accepted=await catalogCount0825();state.catalogCount=state.accepted;
-      const storageAfter0841=await catalogStorageEstimate0841();state.catalogPayloadBytes=storageAfter0841.payloadBytes;state.storageFreeBytes=storageAfter0841.free;
-      const newOnPage=Math.max(0,state.accepted-beforeCount);
-      state.newOnLastPage=newOnPage;
-      state.noChangePages=newOnPage===0?(state.noChangePages||0)+1:0;
-      await pageLogPut0835({key:pageKey0835,page:state.page,checkedAt:new Date().toISOString(),mode,signature:pageSignature,apiProducts:products.length,accepted:normalized.length,newProducts:newOnPage,bytes:result.bytes});state.pagesLogged=await pageLogCount0835();
-      state.page++;pagesProcessed++;state.updatedAt=new Date().toISOString();
-      await catalogMetaPut0825('sync',state);syncView0825(state);await updateCatalogMeta0825();
-      
-      if(mode==='fill'&&state.noChangePages>=20){state.status='completed';state.completionReason='no-new-products';break}
-      if(state.accepted>=CATALOG_PRODUCT_TARGET_0841){state.status='completed';state.completionReason='product-target';break}
-      if(state.catalogPayloadBytes>=CATALOG_DB_HARD_LIMIT_0841){state.status='completed';state.completionReason='storage-limit';break}
-      await sleep0825(CATALOG_DELAY_0825)
-    }
-    if(catalogCancel0825){state.status='paused-user';state.cancelledAt=new Date().toISOString()}
-    else if(state.status==='running')state.status='completed';
-    if(state.status==='completed'){state.completedAt=new Date().toISOString()}
-    state.accepted=await catalogCount0825();state.catalogCount=state.accepted;state.updatedAt=new Date().toISOString();
-    await catalogMetaPut0825('sync',state);
-    const reason=state.status==='paused-data-limit'?`Aktualizace byla pozastavena před překročením limitu. Staženo ${mb0826(state.downloadedBytes)} MiB z 20 MiB. Pokračování vyžaduje další ruční spuštění.`:state.status==='paused-user'?'Obnova byla zrušena. Pokračování vyžaduje další ruční spuštění.':state.completionReason==='duplicate-pages'?'Open Food Facts opakovaně vrátil stejnou stránku. Obnova byla bezpečně ukončena bez ztráty uložených dat.':state.completionReason==='no-new-products'?'Ve 20 po sobě jdoucích stránkách nebyl nalezen nový EAN. Režim Doplnit byl korektně ukončen.':state.completionReason==='end-of-results'?'Byly zpracovány všechny dostupné stránky Open Food Facts pro zvolený filtr.':mode==='quick'?'Rychlá aktualizace dokončila svou dávku.':'Synchronizace byla dokončena.';
-    syncView0825(state);const msg=document.getElementById('catalogMessage0833');if(msg){msg.textContent=reason;msg.hidden=false;}
-    await updateCatalogMeta0825();renderCatalogFoods0825()
-  }catch(e){
-    state.status='paused-error';state.error=String(e.message||e);state.accepted=await catalogCount0825();state.catalogCount=state.accepted;state.updatedAt=new Date().toISOString();await catalogMetaPut0825('sync',state);
-    syncView0825(state);const msg=document.getElementById('catalogMessage0833');if(msg){msg.textContent='Obnovu se nepodařilo dokončit: '+String(e.message||e)+'. Uložená data zůstala zachována.';msg.hidden=false;}
-  }finally{catalogRunning0825=false}
-};
+const SNAPSHOT_MANIFEST_0842='./data/catalog/manifest.json';const SNAPSHOT_RUN_LIMIT_0842=20*1024*1024,SNAPSHOT_PRODUCT_LIMIT_0842=20000,SNAPSHOT_HARD_DB_0842=80*1024*1024,SNAPSHOT_MIN_FREE_0842=200*1024*1024;
+async function snapshotMeta0842(){return(await catalogMetaGet0825('snapshot'))||{chunks:{}}}async function snapshotStorage0842(){const all=await catalogAll0825(),payloadBytes=new TextEncoder().encode(JSON.stringify(all)).byteLength;let x={};try{x=await navigator.storage?.estimate?.()||{}}catch{}return{products:all.length,payloadBytes,free:Math.max(0,Number(x.quota||0)-Number(x.usage||0))}}async function gunzipJson0842(buffer){if(!('DecompressionStream'in window))throw new Error('Prohlížeč nepodporuje gzip. Aktualizuj Chrome nebo Samsung Internet.');return JSON.parse(await new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).text())}function fromSnapshot0842(p){const additives=(p.additives||[]).map(tag=>{const code=additiveCode0827(tag);return{code:code.toUpperCase(),tag:String(tag),isEmulsifier:EMULSIFIER_CODES_0827.has(code)}});return{ean:p.ean,id:'off-'+p.ean,name:p.name,nameLower:String(p.name).toLocaleLowerCase('cs'),brand:p.brand||'',category:mapCategory0825({categories_tags:p.categories||[],product_name:p.name}),offCategories:p.categories||[],kcal:num0825(p.kcal),kj:num0825(p.kj),p:num0825(p.protein),f:num0825(p.fat),c:num0825(p.carbs),fiber:num0825(p.fiber),salt:num0825(p.salt),sat:num0825(p.saturatedFat),sugar:num0825(p.sugars),allergens:(p.allergens||[]).map(x=>String(x).replace(/^..:/,'')),additives,additiveTags:p.additives||[],additivesCount:additives.length,emulsifiers:additives.filter(x=>x.isEmulsifier),ingredients:[],ingredientsText:p.ingredients||'',ingredientTags:[],stores:[],source:'Open Food Facts snapshot',sourceUrl:`https://world.openfoodfacts.org/product/${p.ean}`,updatedAt:p.modified?new Date(p.modified*1000).toISOString():new Date().toISOString(),prices:{Penny:null,BILLA:null,Albert:null,Tesco:null},available:{}}}function snapshotProgress0842(s){const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v},bar=document.getElementById('catalogDataProgress0833');set('catalogStatus0833',s.status);set('catalogSourceCount0833',Number(s.totalProducts||0).toLocaleString('cs-CZ'));set('catalogLocalCount0833',Number(s.localProducts||0).toLocaleString('cs-CZ'));set('catalogChecked0833',Number(s.processedProducts||0).toLocaleString('cs-CZ'));set('catalogNew0833',Number(s.savedProducts||0).toLocaleString('cs-CZ'));set('catalogSkipped0833',Number(s.skippedChunks||0)+' částí');set('catalogPage0833',`${s.completedChunks||0} / ${s.totalChunks||0}`);set('catalogData0833',`${mb0826(s.downloadedBytes)} / 20 MiB`);if(bar){bar.max=20;bar.value=Math.min(20,(s.downloadedBytes||0)/1048576)}}
+window.startCatalogRefresh0826=async function(){if(catalogRunning0825)return;if(!navigator.onLine)return alert('Aktualizace katalogu vyžaduje internet.');catalogRunning0825=true;catalogCancel0825=false;const msg=document.getElementById('catalogMessage0833');try{const initial=await snapshotStorage0842();if(initial.payloadBytes>=SNAPSHOT_HARD_DB_0842)throw new Error('Katalog dosáhl limitu 80 MiB.');if(initial.free&&initial.free<SNAPSHOT_MIN_FREE_0842)throw new Error('Je potřeba 200 MiB volné kvóty.');const mr=await fetch(SNAPSHOT_MANIFEST_0842,{cache:'no-store'});if(!mr.ok)throw new Error(`Manifest není dostupný (HTTP ${mr.status}). Spusť GitHub Action Update Czech food catalog.`);const manifest=await mr.json(),saved=await snapshotMeta0842(),chunks=saved.chunks||{},existing=new Set((await catalogAll0825()).map(x=>x.ean));let run={status:'🔄 Probíhá',totalProducts:manifest.products,totalChunks:manifest.chunks.length,completedChunks:0,processedProducts:0,savedProducts:0,skippedChunks:0,downloadedBytes:0,localProducts:initial.products};snapshotProgress0842(run);for(const ch of manifest.chunks){if(catalogCancel0825)break;if(chunks[ch.file]===ch.sha256){run.skippedChunks++;run.completedChunks++;snapshotProgress0842(run);continue}if(run.downloadedBytes+Number(ch.size||0)>SNAPSHOT_RUN_LIMIT_0842)break;const r=await fetch(`./data/catalog/${ch.file}`,{cache:'no-store'});if(!r.ok)throw new Error(`${ch.file}: HTTP ${r.status}`);const buf=await r.arrayBuffer();run.downloadedBytes+=buf.byteLength;const rows=await gunzipJson0842(buf),batch=[];for(const raw of rows){const x=fromSnapshot0842(raw);run.processedProducts++;if(!x.ean||!x.name)continue;const exists=existing.has(x.ean);if(!exists&&existing.size>=SNAPSHOT_PRODUCT_LIMIT_0842)continue;if(!exists)existing.add(x.ean);batch.push(x)}await catalogBatchPut0825(batch);run.savedProducts+=batch.length;run.localProducts=await catalogCount0825();chunks[ch.file]=ch.sha256;run.completedChunks++;await catalogMetaPut0825('snapshot',{version:manifest.generatedAt,chunks,updatedAt:new Date().toISOString()});snapshotProgress0842(run);if((await snapshotStorage0842()).payloadBytes>=SNAPSHOT_HARD_DB_0842)break}run.status=catalogCancel0825?'⏸ Pozastaveno':run.completedChunks>=run.totalChunks?'✅ Aktuální':'⏸ Limit 20 MiB';snapshotProgress0842(run);await catalogMetaPut0825('sync',{status:run.status,completedAt:new Date().toISOString(),downloadedBytes:run.downloadedBytes,sourceCount:manifest.products,catalogCount:run.localProducts});if(msg){msg.textContent=run.status;msg.hidden=false}await updateCatalogMeta0825();renderCatalogFoods0825()}catch(e){if(msg){msg.textContent='Aktualizace selhala: '+String(e.message||e);msg.hidden=false}alert(String(e.message||e))}finally{catalogRunning0825=false}};
 window.cancelCatalogRefresh0825=function(){catalogCancel0825=true};
 function catalogStatusLabel0829(status){return({running:'🔄 Probíhá obnova',completed:'✅ Dokončená obnova','paused-data-limit':'⚠️ Pozastaveno: datový limit','paused-user':'⏸ Pozastaveno uživatelem','paused-error':'❌ Přerušeno chybou'})[status]||'–'}
   window.showCatalogStatus0825=async function(){const count=await catalogCount0825(),meta=await catalogMetaGet0825('sync');document.getElementById('catalogBody0825').innerHTML=`<h3>Lokální katalog</h3><div class="catalogStats0825"><span>Stav</span><b>${catalogStatusLabel0829(meta?.status)}</b><span>Produkty</span><b>${count.toLocaleString('cs-CZ')}</b><span>Poslední dokončení</span><b>${meta?.completedAt?new Date(meta.completedAt).toLocaleString('cs-CZ'):'–'}</b><span>Data posledního běhu</span><b>${mb0826(meta?.downloadedBytes||0)} / 20 MiB</b><span>Další stránka</span><b>${meta?.page||1}</b></div><p class="catalogSource0825">Open Food Facts · ODbL · data mohou být neúplná nebo nepřesná.</p><button class="primary" type="button" onclick="catalogDialog0825.close()">Zavřít</button>`;document.getElementById('catalogDialog0825').showModal()};
