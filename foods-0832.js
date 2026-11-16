@@ -59,8 +59,14 @@
     dlg.showModal()
   };
   window.editFoodFromInfo0832=async function(){return};
-  window.ensureCatalogShell0833=function(){const body=$i('catalogBody0825'),title=$i('catalogTitle0825');if(!body)return;if(title)title.textContent='Katalog potravin';if($i('catalogShell0833'))return;body.innerHTML=`<div id="catalogShell0833"><div class="catalogSimple0846"><span>Stav</span><b id="catalogStatus0833">–</b><span>Množství potravin v katalogu</span><b id="catalogLocalCount0833">0</b><span>Přibližná velikost katalogu</span><b id="catalogSize0846">0,0 MB</b><span>Poslední aktualizace</span><b id="catalogCompleted0833">–</b></div><p id="catalogMessage0833" class="catalogNotice0825" hidden></p><div class="catalogActions0832"><button type="button" onclick="catalogDialog0825.close()">Zavřít</button><button id="catalogStart0833" class="primary" type="button" onclick="startCatalogRefresh0826()">Aktualizovat</button><button id="catalogStop0833" class="catalogCancel0825" type="button" onclick="cancelCatalogRefresh0825()" hidden>Zastavit</button></div></div>`};
-  window.openCatalogManager0832=async function(){ensureCatalogShell0833();if(typeof updateCatalogDialog0846==='function')await updateCatalogDialog0846();$i('catalogDialog0825')?.showModal()};
+  window.ensureCatalogShell0833=function(){const body=$i('catalogBody0825'),title=$i('catalogTitle0825');if(!body)return;if(title)title.textContent='Katalog potravin';if($i('catalogShell0833'))return;body.innerHTML=`<div id="catalogShell0833"><div class="catalogStats0825 catalogSimple0847"><span>Množství potravin v katalogu</span><b id="catalogLocalCount0833">0</b><span>Přibližná velikost katalogu</span><b id="catalogSize0847">–</b><span>Poslední aktualizace</span><b id="catalogCompleted0833">–</b><span>Stav poslední aktualizace</span><b id="catalogStatus0833" class="catalogStatus0847">Neaktualizováno</b></div><p id="catalogMessage0833" class="catalogNotice0825" hidden></p><div class="catalogActions0832"><button type="button" onclick="catalogDialog0825.close()">Zavřít</button><button id="catalogStart0833" class="primary" type="button" onclick="startCatalogRefresh0826()">Aktualizovat</button><button id="catalogStop0833" class="catalogCancel0825" type="button" onclick="cancelCatalogRefresh0825()" hidden>Zastavit</button></div></div>`};
+  window.openCatalogManager0832=async function(){
+    ensureCatalogShell0833();const count=await catalogCount0825(),meta=await catalogMetaGet0825('sync'),dlg=$i('catalogDialog0825');
+    const merged={...(meta||{}),accepted:count,catalogCount:count,status:meta?.status||'completed'};
+    if(typeof syncView0825==='function')syncView0825(merged);
+    const c=$i('catalogCompleted0833');if(c)c.textContent=meta?.completedAt?new Date(meta.completedAt).toLocaleString('cs-CZ'):'–';
+    dlg?.showModal();
+  };
   window.foodSearchChanged0833=function(){const clear=$i('foodSearchClear0833');if(clear)clear.hidden=!($i('search')?.value);renderFoods0832(true)};
   window.clearFoodSearch0833=function(){const input=$i('search');if(input){input.value='';input.focus()}const clear=$i('foodSearchClear0833');if(clear)clear.hidden=true;renderFoods0832(true)};
   let scannerStream0833=null,scannerFrame0833=null;
