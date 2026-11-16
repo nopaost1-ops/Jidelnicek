@@ -1,6 +1,6 @@
 # Jídelníček+
 
-Aktuální aplikační verze: **0.8.60**
+Aktuální aplikační verze: **0.8.61**
 
 ## Stabilní názvy aplikačních souborů
 - `app.js`
@@ -12,7 +12,7 @@ Aktuální aplikační verze: **0.8.60**
 - `style.css`
 - `sw.js`
 
-Číslo verze se už nebude přidávat do názvů těchto souborů. Cache busting řeší `?v=0860` v `index.html` a cache ID v `sw.js`.
+Číslo verze se už nebude přidávat do názvů těchto souborů. Cache busting řeší `?v=0861` v `index.html` a cache ID v `sw.js`.
 
 ## Katalog
 - `catalog-workflow/` obsahuje serverové skripty.
