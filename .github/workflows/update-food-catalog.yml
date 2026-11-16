@@ -1,7 +1,6 @@
 name: Update Czech food catalog
 on:
   workflow_dispatch:
-
 permissions:
   contents: write
 concurrency:
@@ -16,11 +15,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Build root-only Czech snapshot
+      - name: Build Czech snapshot with progress
         env:
           MAX_PRODUCTS: '20000'
           MAX_UNCOMPRESSED_CHUNK: '6291456'
-          USER_AGENT: 'JidelnicekPlus-CatalogBuilder/1.0 (GitHub Actions)'
+          LOG_EVERY: '100000'
+          USER_AGENT: 'JidelnicekPlus-CatalogBuilder/1.1 (GitHub Actions)'
         run: node build-cz-catalog.mjs
       - name: Commit catalog snapshot
         run: |
