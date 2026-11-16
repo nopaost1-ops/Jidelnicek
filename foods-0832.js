@@ -25,7 +25,7 @@
     return rows.sort(cmp)
   }
   async function filterRows(){
-    const q=normalize($i('search')?.value||''),cat=window.selectedFoodCategory0850||'',sort='az';
+    const q=normalize($i('search')?.value||''),cat=window.selectedFoodCategory0851||'',sort='az';
     let rows=await mergedRows();
     rows=rows.filter(x=>(!cat||foodCategory(x)===cat)&&(!q||normalize(foodName(x)).includes(q)||normalize(foodBrand(x)).includes(q)||foodEan(x).includes(q)));
     return sortRows(rows,sort)
@@ -37,7 +37,7 @@
     return `<div class="foodRow0832"><div class="foodMain0832"><b>${name}</b><small>${html(sub)}</small></div><button type="button" class="foodInfo0832" aria-label="Informace o ${name}" onclick="event.stopPropagation();${action}">i</button></div>`
   }
   window.renderFoods0832=async function(reset=false){
-  if(!window.selectedFoodCategory0850){const list=$i('foodList');if(list)list.innerHTML='';return;}
+  if(!window.selectedFoodCategory0851){const list=$i('foodList');if(list)list.innerHTML='';return;}
     if(reset)visibleLimit=PAGE_SIZE;
     const list=$i('foodList');if(!list)return;
     currentRows=await filterRows();
