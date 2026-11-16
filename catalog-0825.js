@@ -2,6 +2,7 @@
 // Open Food Facts catalog sync for Jidelnicek+ 0.8.25.
 const CATALOG_PAGE_SIZE_0825=100, CATALOG_DELAY_0825=7000;
 const DOWNLOAD_HARD_LIMIT_0826=20*1024*1024,DOWNLOAD_SOFT_LIMIT_0826=17*1024*1024,REQUEST_RESERVE_0826=3*1024*1024;
+const CATALOG_PRODUCT_TARGET_0841=20000,CATALOG_DB_SOFT_LIMIT_0841=65*1024*1024,CATALOG_DB_HARD_LIMIT_0841=80*1024*1024,MIN_FREE_QUOTA_0841=200*1024*1024;
 const CATALOG_DB_0825='JidelnicekFoodCatalog', CATALOG_STORE_0825='foods', META_STORE_0825='meta', PAGE_LOG_STORE_0835='pageLog';
 const CATALOG_CATS_0825=['Ovoce','Zelenina','Maso a ryby','Mléčné výrobky','Vejce','Obiloviny a přílohy','Luštěniny','Ořechy a semena','Tuky a oleje','Nápoje','Ostatní'];
 let catalogCancel0825=false,catalogRunning0825=false,catalogTimer0825=null;
@@ -55,10 +56,16 @@ function syncView0825(s){
   val('catalogCoverageProgress0833',coverage,100);val('catalogDataProgress0833',Math.min(20,Number(s.downloadedBytes||0)/1024/1024),20);
   const start=document.getElementById('catalogStart0833'),stop=document.getElementById('catalogStop0833'),mode=document.getElementById('catalogMode0826');if(start)start.hidden=s.status==='running';if(stop)stop.hidden=s.status!=='running';if(mode)mode.disabled=s.status==='running';
 }  
+async function catalogStorageEstimate0841(){const products=await catalogAll0825();const payloadBytes=new TextEncoder().encode(JSON.stringify(products)).byteLength;let storage={};try{storage=await navigator.storage?.estimate?.()||{}}catch{}return{products:products.length,payloadBytes,usage:Number(storage.usage||0),quota:Number(storage.quota||0),free:Math.max(0,Number(storage.quota||0)-Number(storage.usage||0))}}
 window.startCatalogRefresh0826=async function(){
   if(catalogRunning0825)return;
   if(!navigator.onLine)return alert('Obnova katalogu vyžaduje připojení k internetu.');
   const mode=document.getElementById('catalogMode0826')?.value||'quick';
+  const storage0841=await catalogStorageEstimate0841();
+  if(storage0841.products>=CATALOG_PRODUCT_TARGET_0841)return alert('Katalog dosáhl cíle 20 000 produktů.');
+  if(storage0841.payloadBytes>=CATALOG_DB_HARD_LIMIT_0841)return alert('Lokální katalog dosáhl hard limitu 80 MiB. Synchronizace nebyla spuštěna.');
+  if(storage0841.free>0&&storage0841.free<MIN_FREE_QUOTA_0841)return alert('Pro bezpečnou aktualizaci je potřeba alespoň 200 MiB volné browserové kvóty.');
+  if(storage0841.payloadBytes>=CATALOG_DB_SOFT_LIMIT_0841){const msg=document.getElementById('catalogMessage0833');if(msg){msg.textContent='Upozornění: lokální katalog překročil soft limit 65 MiB. Synchronizace bude pokračovat pouze do hard limitu 80 MiB.';msg.hidden=false}}
   catalogRunning0825=true;catalogCancel0825=false;
   const previous=await catalogMetaGet0825('sync');
   const canResume=previous&&['paused-data-limit','paused-user','paused-error'].includes(previous.status)&&previous.mode===mode;
@@ -108,6 +115,7 @@ window.startCatalogRefresh0826=async function(){
       if(state.duplicatePages>=2){state.status='completed';state.completionReason='duplicate-pages';break}
 
       const normalized=[];
+      let allowNew0841=state.accepted<CATALOG_PRODUCT_TARGET_0841;
       for(const rawProduct of products){
         state.scanned++;
         const x=normalizeProduct0825(rawProduct);
@@ -122,6 +130,7 @@ window.startCatalogRefresh0826=async function(){
       mergeMaterialized0825(normalized);
       state.saved+=normalized.length;
       state.accepted=await catalogCount0825();state.catalogCount=state.accepted;
+      const storageAfter0841=await catalogStorageEstimate0841();state.catalogPayloadBytes=storageAfter0841.payloadBytes;state.storageFreeBytes=storageAfter0841.free;
       const newOnPage=Math.max(0,state.accepted-beforeCount);
       state.newOnLastPage=newOnPage;
       state.noChangePages=newOnPage===0?(state.noChangePages||0)+1:0;
@@ -130,6 +139,8 @@ window.startCatalogRefresh0826=async function(){
       await catalogMetaPut0825('sync',state);syncView0825(state);await updateCatalogMeta0825();
       
       if(mode==='fill'&&state.noChangePages>=20){state.status='completed';state.completionReason='no-new-products';break}
+      if(state.accepted>=CATALOG_PRODUCT_TARGET_0841){state.status='completed';state.completionReason='product-target';break}
+      if(state.catalogPayloadBytes>=CATALOG_DB_HARD_LIMIT_0841){state.status='completed';state.completionReason='storage-limit';break}
       await sleep0825(CATALOG_DELAY_0825)
     }
     if(catalogCancel0825){state.status='paused-user';state.cancelledAt=new Date().toISOString()}
