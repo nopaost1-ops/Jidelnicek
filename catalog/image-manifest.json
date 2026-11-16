@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "snapshotId": "20261116T220518Z",
+  "generatedAt": "2026-11-16T22:35:11.796Z",
+  "width": 100,
+  "height": 100,
+  "format": "webp",
+  "quality": 68,
+  "products": 24462,
+  "availableImages": 0,
+  "missingImages": 24462,
+  "failedImages": 0,
+  "index": {
+    "file": "image-index.json.gz",
+    "size": 22,
+    "sha256": "21947b02ead137acb20e602e9448c7c453b2836d1a755aadd5e1c61ecd2eb034"
+  },
+  "totalCompressedBytes": 22,
+  "chunks": []
+}

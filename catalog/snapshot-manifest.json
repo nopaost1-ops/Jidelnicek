@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "snapshotId": "20261116T220518Z",
+  "generatedAt": "2026-11-16T22:35:11.835Z",
+  "complete": true,
+  "products": {
+    "count": 24462,
+    "manifest": "catalog-manifest.json",
+    "chunks": 3,
+    "compressedBytes": 2279856
+  },
+  "images": {
+    "available": 0,
+    "missing": 24462,
+    "manifest": "image-manifest.json",
+    "index": "image-index.json.gz",
+    "chunks": 0,
+    "compressedBytes": 22,
+    "width": 100,
+    "height": 100,
+    "format": "webp"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "snapshotId": "20261116T220518Z",
+  "generatedAt": "2026-11-16T22:35:09.950Z",
+  "source": "Open Food Facts",
+  "license": "ODbL-1.0",
+  "products": 24462,
+  "scanned": 4916371,
+  "rejected": 4891909,
+  "czechCandidates": 24462,
+  "totalCompressedBytes": 2279856,
+  "chunks": [
+    {
+      "file": "catalog-chunk-0001.json.gz",
+      "products": 9655,
+      "size": 1082117,
+      "uncompressedSize": 6291236,
+      "sha256": "7f614032c99459cb582ed672de0a95bffc451db892537633933133b373a36af4"
+    },
+    {
+      "file": "catalog-chunk-0002.json.gz",
+      "products": 11367,
+      "size": 926293,
+      "uncompressedSize": 6291345,
+      "sha256": "bde23d398efe09ca7f80b4ba0a52b219e062d049b753d4e3e10680b6f3097c5a"
+    },
+    {
+      "file": "catalog-chunk-0003.json.gz",
+      "products": 3440,
+      "size": 271446,
+      "uncompressedSize": 1876251,
+      "sha256": "e4c61e07df51aed3a3e4b249e96a8e3e3f5099df80fcb9c47b5d85e6a00efdb7"
+    }
+  ]
+}
