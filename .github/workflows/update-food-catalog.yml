@@ -67,6 +67,8 @@ jobs:
             catalog-manifest.json
             catalog-chunk-*.json.gz
           key: off-czech-products-v2-${{ steps.source.outputs.fingerprint }}
+      - name: Patch image builder for archiver 8
+        run: node fix-archiver-import.mjs
       - name: Build 100x100 WebP product images
         env:
           IMAGE_WIDTH: '100'
