@@ -34,4 +34,3 @@ jobs:
             git commit -m "Update Czech food catalog snapshot"
             git push
           fi
-
