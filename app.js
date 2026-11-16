@@ -67,14 +67,14 @@ function labBounds0820(key){const r=LABREF0820[key],sex=db.profile?.sex||'';retu
 function labStatus0820(value,min,max){const v=parseFloat(String(value??'').replace(',','.'));if(!Number.isFinite(v))return{cls:'none',txt:'–'};if(v<min)return{cls:'bad',txt:'↓'};if(v>max)return{cls:'bad',txt:'↑'};return{cls:'ok',txt:'✓'}}
 function labRow0820(key){
  const r=LABREF0820[key],[min,max]=labBounds0820(key),item=healthDraft.labs.items[key]||{},st=labStatus0820(item.value,min,max);
- return `<div class="lab0824Block"><div class="lab0824ParamLine"><span class="lab0820Name">${r.name}</span></div><div class="lab0824DataRow"><span class="lab0824Min">${String(min).replace('.',',')}</span><input id="lab-${key}-value" class="lab0824Value" inputmode="decimal" value="${esc(item.value||'')}" aria-label="${r.name} měřená hodnota" oninput="evaluateLab0821('${key}',this.value)"><span class="lab0824Max">${String(max).replace('.',',')}</span><span class="lab0824Unit">${r.unit}</span><span id="lab-${key}-status" class="lab0824State ${st.cls}">${st.txt}</span></div></div>`;
+ return `<section class="labRow0837" data-lab-key="${key}"><div class="labName0837"><span class="labNameText0837">${r.name}</span><button type="button" class="labInfo0837" aria-label="Informace o ${r.name}" onclick="showLabHelp0822('${key}')">i</button></div><div class="labValues0837"><span class="labMin0837">${String(min).replace('.',',')}</span><input id="lab-${key}-value" class="labValue0837" inputmode="decimal" value="${esc(item.value||'')}" aria-label="${r.name} měřená hodnota" oninput="evaluateLab0821('${key}',this.value)"><span class="labMax0837">${String(max).replace('.',',')}</span><span class="labUnit0837">${r.unit}</span><span id="lab-${key}-status" class="labState0837 ${st.cls}">${st.txt}</span></div></section>`;
 }
 const renderHealthEditorPre0820=renderHealthEditor;
 renderHealthEditor=function(){
  normalizeHealthDraft();
  if(healthStep!==3)return renderHealthEditorPre0820();
  const sex=db.profile?.sex==='male'?'Muž':db.profile?.sex==='female'?'Žena':'Neuvedeno';
- $('healthStep').innerHTML=`<div class="labFinal0836"><div class="healthTitle">Zdraví – Laboratoř</div><label>Datum odběru<input id="labDate" type="date" value="${healthDraft.labs.date||''}"></label><div class="lab0820Sex">Referenční meze pro: <b>${sex}</b></div><div class="lab0824Header"><span>Min</span><span>Hodnota</span><span>Max</span><span>Jednotka</span><span>Stav</span></div>${Object.keys(LABREF0820).map(labRow0820).join('')}<div class="healthBox">Min a Max jsou pouze pro čtení. ✓ = hodnota v rozmezí, ↓ = pod rozmezím, ↑ = nad rozmezím. Referenční meze na konkrétní laboratorní zprávě mají přednost.</div></div>`;
+ $('healthStep').innerHTML=`<div class="labFinal0837"><div class="healthTitle">Zdraví – Laboratoř</div><label class="labDate0837">Datum odběru<input id="labDate" type="date" value="${healthDraft.labs.date||''}"></label><div class="labSex0837">Referenční meze pro: <b>${sex}</b></div><div class="labHeader0837"><span>Min</span><span>Hodnota</span><span>Max</span><span>Jednotka</span><span>Stav</span></div>${Object.keys(LABREF0820).map(labRow0820).join('')}<div class="healthBox labNote0837">Min a Max jsou pouze pro čtení. ✓ = hodnota v rozmezí, ↓ = pod rozmezím, ↑ = nad rozmezím. Referenční meze na konkrétní laboratorní zprávě mají přednost.</div></div>`;
  document.querySelectorAll('.healthTabs button').forEach((b,i)=>b.classList.toggle('active',i===healthStep));
 };
 // Capture only measured value. Min/Max are constants and are never written into HealthVault.
@@ -89,7 +89,7 @@ captureHealthTab=function(fromStep){
 // ===== v0.8.21 – live laboratory evaluation while typing =====
 window.evaluateLab0821=function(key,rawValue){
  const r=LABREF0820[key];if(!r)return;const bounds=labBounds0820(key),min=bounds[0],max=bounds[1],status=labStatus0820(rawValue,min,max),el=document.getElementById(`lab-${key}-status`);if(!el)return;
- el.className=`lab0820State ${status.cls}`;el.textContent=status.txt;
+ el.className=`labState0837 ${status.cls}`;el.textContent=status.txt;
  // Keep the draft in sync immediately, without waiting for tab navigation or a rerender.
  normalizeHealthDraft();healthDraft.labs.items[key]??={};healthDraft.labs.items[key].value=rawValue||'';delete healthDraft.labs.items[key].min;delete healthDraft.labs.items[key].max;
 };
