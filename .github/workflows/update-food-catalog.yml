@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '20'
       - name: Install image tools
-        run: npm install --no-save sharp archiver@8.0.0@8.0.0
+        run: npm install --no-save sharp archiver@8.0.0
       - name: Create snapshot ID
         run: echo "SNAPSHOT_ID=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
       - name: Read Open Food Facts source version
