@@ -1,36 +1,52 @@
-name: Update Czech food catalog
+name: Update Czech food catalog set
 on:
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: update-food-catalog
+  group: update-food-catalog-set
   cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Build Czech snapshot with progress
+      - name: Install image tools
+        run: npm install --no-save sharp archiver
+      - name: Create snapshot ID
+        run: echo "SNAPSHOT_ID=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
+      - name: Build Czech product snapshot
         env:
-          MAX_PRODUCTS: '20000'
-          MAX_UNCOMPRESSED_CHUNK: '6291456'
           LOG_EVERY: '100000'
-          USER_AGENT: 'JidelnicekPlus-CatalogBuilder/1.1 (GitHub Actions)'
+          MAX_UNCOMPRESSED_CHUNK: '6291456'
+          USER_AGENT: 'JidelnicekPlus-CatalogBuilder/2.0 (GitHub Actions)'
         run: node build-cz-catalog.mjs
-      - name: Commit catalog snapshot
+      - name: Build 100x100 WebP product images
+        env:
+          IMAGE_WIDTH: '100'
+          IMAGE_HEIGHT: '100'
+          WEBP_QUALITY: '68'
+          IMAGES_PER_CHUNK: '500'
+          IMAGE_CONCURRENCY: '8'
+          USER_AGENT: 'JidelnicekPlus-ImageBuilder/1.0 (GitHub Actions)'
+        run: node build-food-images.mjs
+      - name: Validate complete snapshot set
+        run: node validate-snapshot-set.mjs
+      - name: Commit complete snapshot set
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add catalog-manifest.json
-          find . -maxdepth 1 -type f -name 'catalog-chunk-*.json.gz' -print0 | xargs -0 -r git add --
+          git add snapshot-manifest.json catalog-manifest.json image-manifest.json image-index.json.gz
+          find . -maxdepth 1 -type f \( -name 'catalog-chunk-*.json.gz' -o -name 'image-chunk-*.zip' \) -print0 | xargs -0 -r git add --
           if git diff --cached --quiet; then
-            echo "No catalog changes"
+            echo "No snapshot changes"
           else
-            git commit -m "Update Czech food catalog snapshot"
+            git commit -m "Update Czech catalog and image snapshot set $SNAPSHOT_ID"
+            git fetch origin main
+            git rebase origin/main
             git push
           fi
