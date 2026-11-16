@@ -76,3 +76,25 @@ document.addEventListener('DOMContentLoaded',()=>{ensureCatalogUi0825();addCatal
  if(oldProgress)window.snapshotProgress0842=function(s){try{oldProgress(s)}catch{}const st=document.getElementById('catalogStatus0833');if(st)st.textContent=wordStatus(s?.status);const n=document.getElementById('catalogLocalCount0833');if(n)n.textContent=Number(s?.localProducts||0).toLocaleString('cs-CZ')};
  const oldMeta=window.updateCatalogMeta0825;if(typeof oldMeta==='function')window.updateCatalogMeta0825=async function(){try{await oldMeta()}catch{}const count=await catalogCount0825();const n=document.getElementById('catalogLocalCount0833');if(n)n.textContent=count.toLocaleString('cs-CZ');const meta=await catalogMetaGet0825('sync');const d=document.getElementById('catalogCompleted0833');if(d)d.textContent=meta?.completedAt?new Date(meta.completedAt).toLocaleString('cs-CZ'):'–';const st=document.getElementById('catalogStatus0833');if(st)st.textContent=wordStatus(meta?.status)};
 })();
+
+// v0.8.49 – independent catalog dialog entry point
+window.openCatalogManager0849=async function(){
+  try{
+    let dlg=document.getElementById('catalogDialog0849');
+    if(!dlg){
+      document.body.insertAdjacentHTML('beforeend',`<dialog id="catalogDialog0849" class="catalogDialog0825"><div class="dialogHead"><h2>Katalog potravin</h2><button type="button" id="catalogClose0849">×</button></div><div id="catalogBody0849"></div></dialog>`);
+      dlg=document.getElementById('catalogDialog0849');
+      document.getElementById('catalogClose0849').onclick=()=>dlg.close();
+    }
+    let count=0,meta=null,sizeText='–';
+    try{count=await catalogCount0825()}catch(e){console.warn('Catalog count',e)}
+    try{meta=await catalogMetaGet0825('sync')}catch(e){console.warn('Catalog meta',e)}
+    try{const estimate=await navigator.storage?.estimate?.();if(estimate?.usage!=null)sizeText=(estimate.usage/1048576).toLocaleString('cs-CZ',{minimumFractionDigits:1,maximumFractionDigits:1})+' MB'}catch(e){}
+    const raw=String(meta?.status||'').toLowerCase();
+    const status=catalogRunning0825?'Probíhá':raw.includes('error')||raw.includes('chyb')?'Chyba':raw.includes('paused')||raw.includes('zast')?'Zastaveno':meta?.completedAt?'Aktuální':'Neaktualizováno';
+    document.getElementById('catalogBody0849').innerHTML=`<div class="catalogSimple0849"><span>Množství potravin v katalogu</span><b>${Number(count).toLocaleString('cs-CZ')}</b><span>Přibližná velikost katalogu</span><b>${sizeText}</b><span>Poslední aktualizace</span><b>${meta?.completedAt?new Date(meta.completedAt).toLocaleString('cs-CZ'):'–'}</b><span>Stav poslední aktualizace</span><b>${status}</b></div><div class="catalogActions0832"><button type="button" id="catalogCancel0849">Zavřít</button><button type="button" class="primary" id="catalogUpdate0849">Aktualizovat</button></div>`;
+    document.getElementById('catalogCancel0849').onclick=()=>dlg.close();
+    document.getElementById('catalogUpdate0849').onclick=async()=>{dlg.close();if(typeof confirmCatalogRefresh0825==='function')await confirmCatalogRefresh0825();else alert('Aktualizační modul katalogu není dostupný.')};
+    if(!dlg.open)dlg.showModal();
+  }catch(e){console.error('Catalog manager 0849',e);alert('Katalog nelze otevřít: '+String(e.message||e))}
+};
