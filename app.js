@@ -74,7 +74,7 @@ renderHealthEditor=function(){
  normalizeHealthDraft();
  if(healthStep!==3)return renderHealthEditorPre0820();
  const sex=db.profile?.sex==='male'?'Muž':db.profile?.sex==='female'?'Žena':'Neuvedeno';
- $('healthStep').innerHTML=`<div class="healthTitle">Zdraví – Laboratoř</div><label>Datum odběru<input id="labDate" type="date" value="${healthDraft.labs.date||''}"></label><div class="lab0820Sex">Referenční meze pro: <b>${sex}</b></div><div class="lab0824Header"><span>Min</span><span>Hodnota</span><span>Max</span><span>Jednotka</span><span>Stav</span></div>${Object.keys(LABREF0820).map(labRow0820).join('')}<div class="healthBox">Min a Max jsou pouze pro čtení. ✓ = hodnota v rozmezí, ↓ = pod rozmezím, ↑ = nad rozmezím. Referenční meze na konkrétní laboratorní zprávě mají přednost.</div>`;
+ $('healthStep').innerHTML=`<div class="labFinal0836"><div class="healthTitle">Zdraví – Laboratoř</div><label>Datum odběru<input id="labDate" type="date" value="${healthDraft.labs.date||''}"></label><div class="lab0820Sex">Referenční meze pro: <b>${sex}</b></div><div class="lab0824Header"><span>Min</span><span>Hodnota</span><span>Max</span><span>Jednotka</span><span>Stav</span></div>${Object.keys(LABREF0820).map(labRow0820).join('')}<div class="healthBox">Min a Max jsou pouze pro čtení. ✓ = hodnota v rozmezí, ↓ = pod rozmezím, ↑ = nad rozmezím. Referenční meze na konkrétní laboratorní zprávě mají přednost.</div></div>`;
  document.querySelectorAll('.healthTabs button').forEach((b,i)=>b.classList.toggle('active',i===healthStep));
 };
 // Capture only measured value. Min/Max are constants and are never written into HealthVault.
