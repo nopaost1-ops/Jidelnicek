@@ -1,26 +1,40 @@
 name: Update Czech food catalog set
+
 on:
   workflow_dispatch:
+
 permissions:
   contents: write
+
 concurrency:
   group: update-food-catalog-set
   cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
       OFF_DUMP_URL: https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Install image tools
         run: npm install --no-save sharp archiver@8.0.0
+
       - name: Create snapshot ID
+        shell: bash
         run: echo "SNAPSHOT_ID=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
+
       - name: Read Open Food Facts source version
         id: source
         shell: bash
@@ -37,6 +51,7 @@ jobs:
           echo "OFF source identity:"
           printf '%s\n' "$identity"
           echo "OFF fingerprint: $fingerprint"
+
       - name: Restore matching product snapshot
         id: product-cache
         uses: actions/cache/restore@v4
@@ -45,12 +60,16 @@ jobs:
             catalog/catalog-manifest.json
             catalog/catalog-chunk-*.json.gz
           key: off-czech-products-v2-${{ steps.source.outputs.fingerprint }}
+
       - name: Validate restored product snapshot
         if: steps.product-cache.outputs.cache-hit == 'true'
+        shell: bash
         run: |
+          set -euo pipefail
           test -s catalog/catalog-manifest.json
-          ls catalog/catalog-chunk-*.json.gz >/dev/null
-          node -e "const m=require('./catalog/catalog-manifest.json'); if(!m.products||!m.chunks?.length) process.exit(1); console.log('Using cached product snapshot:',m.products,'products,',m.chunks.length,'chunks')"
+          compgen -G 'catalog/catalog-chunk-*.json.gz' > /dev/null
+          node -e "const m=require('./catalog/catalog-manifest.json'); if(!m.products || !m.chunks?.length) process.exit(1); console.log('Using cached product snapshot:',m.products,'products,',m.chunks.length,'chunks')"
+
       - name: Build Czech product snapshot
         if: steps.product-cache.outputs.cache-hit != 'true'
         env:
@@ -59,7 +78,8 @@ jobs:
           SOURCE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
           USER_AGENT: 'JidelnicekPlus-CatalogBuilder/2.1 (GitHub Actions)'
         run: node catalog-workflow/build-cz-catalog.mjs
-      - name: Save product snapshot immediately
+
+      - name: Save product snapshot
         if: steps.product-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
@@ -67,6 +87,8 @@ jobs:
             catalog/catalog-manifest.json
             catalog/catalog-chunk-*.json.gz
           key: off-czech-products-v2-${{ steps.source.outputs.fingerprint }}
+
+      - name: Build food image snapshot
         env:
           IMAGE_WIDTH: '100'
           IMAGE_HEIGHT: '100'
@@ -75,18 +97,21 @@ jobs:
           IMAGE_CONCURRENCY: '8'
           USER_AGENT: 'JidelnicekPlus-ImageBuilder/1.1 (GitHub Actions)'
         run: node catalog-workflow/build-food-images.mjs
+
       - name: Validate complete snapshot set
         run: node catalog-workflow/validate-snapshot-set.mjs
+
       - name: Commit complete snapshot set
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add catalog/
           if git diff --cached --quiet; then
             echo "No snapshot changes"
-          else
-            git commit -m "Update Czech catalog and image snapshot set"
-            git fetch origin main
-            git rebase origin/main
-            git push
+            exit 0
           fi
+          git commit -m "Update Czech catalog and image snapshot set"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
