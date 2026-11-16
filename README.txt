@@ -1,6 +1,16 @@
-Jídelníček+ catalog builder progress patch 0.8.45
+Jídelníček+ – unified catalog + images workflow
 
-Nahraď v rootu repository soubor build-cz-catalog.mjs tímto souborem.
-Workflow .github/workflows/update-food-catalog.yml nahraď obsahem z tohoto balíčku pouze pokud chceš i název kroku a LOG_EVERY explicitně v workflow.
+Root files:
+- build-cz-catalog.mjs
+- build-food-images.mjs
+- validate-snapshot-set.mjs
 
-Workflow je jen ruční. Loguje stav každých 100 000 zpracovaných řádků a každý vytvořený chunk.
+Workflow path:
+- .github/workflows/update-food-catalog.yml
+
+Výsledkem jednoho ručního běhu je společná sada se stejným snapshotId:
+- snapshot-manifest.json
+- catalog-manifest.json + catalog-chunk-*.json.gz
+- image-manifest.json + image-index.json.gz + image-chunk-*.zip
+
+Nová sada se commitne pouze tehdy, když produktová i obrazová část projdou validací.
