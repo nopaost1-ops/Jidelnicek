@@ -98,3 +98,32 @@ window.openCatalogManager0853=async function(){
     if(!dlg.open)dlg.showModal();
   }catch(e){console.error('Catalog manager 0853',e);alert('Katalog nelze otevřít: '+String(e.message||e))}
 };
+
+// v0.8.63: immediate feedback for the catalog update action.
+(function(){
+  const baseOpen=window.openCatalogManager0853;
+  if(typeof baseOpen!=='function')return;
+  window.openCatalogManager0853=async function(){
+    await baseOpen();
+    const btn=document.getElementById('catalogUpdate0853');
+    if(!btn)return;
+    btn.onclick=async()=>{
+      if(btn.disabled)return;
+      const old=btn.textContent;
+      btn.disabled=true;
+      btn.textContent='Kontroluji…';
+      try{
+        const probe=await fetch('./catalog/catalog-manifest.json',{cache:'no-store'});
+        if(!probe.ok)throw new Error(`Katalog není na serveru dostupný (HTTP ${probe.status}). Spusť GitHub Action Update Czech food catalog.`);
+        document.getElementById('catalogDialog0853')?.close();
+        if(typeof window.confirmCatalogRefresh0825==='function')await window.confirmCatalogRefresh0825();
+        else throw new Error('Aktualizační modul katalogu není dostupný.');
+      }catch(e){
+        alert(String(e?.message||e));
+      }finally{
+        btn.disabled=false;
+        btn.textContent=old;
+      }
+    };
+  };
+})();
