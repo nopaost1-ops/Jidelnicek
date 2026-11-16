@@ -10,21 +10,63 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      OFF_DUMP_URL: https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Install image tools
-        run: npm install --no-save sharp archiver
+        run: npm install --no-save sharp archiver@8.0.0
       - name: Create snapshot ID
         run: echo "SNAPSHOT_ID=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
+      - name: Read Open Food Facts source version
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(curl -fsSIL --retry 3 --retry-delay 5 "$OFF_DUMP_URL")"
+          identity="$(printf '%s\n' "$headers" | tr -d '\r' | grep -iE '^(etag|last-modified|content-length):' | tail -n 3)"
+          if [ -z "$identity" ]; then
+            echo "Source did not provide ETag, Last-Modified or Content-Length" >&2
+            exit 1
+          fi
+          fingerprint="$(printf '%s' "$identity" | sha256sum | cut -d' ' -f1)"
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          echo "OFF source identity:"
+          printf '%s\n' "$identity"
+          echo "OFF fingerprint: $fingerprint"
+      - name: Restore matching product snapshot
+        id: product-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            catalog-manifest.json
+            catalog-chunk-*.json.gz
+          key: off-czech-products-v2-${{ steps.source.outputs.fingerprint }}
+      - name: Validate restored product snapshot
+        if: steps.product-cache.outputs.cache-hit == 'true'
+        run: |
+          test -s catalog-manifest.json
+          ls catalog-chunk-*.json.gz >/dev/null
+          node -e "const m=require('./catalog-manifest.json'); if(!m.products||!m.chunks?.length) process.exit(1); console.log('Using cached product snapshot:',m.products,'products,',m.chunks.length,'chunks')"
       - name: Build Czech product snapshot
+        if: steps.product-cache.outputs.cache-hit != 'true'
         env:
           LOG_EVERY: '100000'
           MAX_UNCOMPRESSED_CHUNK: '6291456'
-          USER_AGENT: 'JidelnicekPlus-CatalogBuilder/2.0 (GitHub Actions)'
+          SOURCE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
+          USER_AGENT: 'JidelnicekPlus-CatalogBuilder/2.1 (GitHub Actions)'
         run: node build-cz-catalog.mjs
+      - name: Save product snapshot immediately
+        if: steps.product-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            catalog-manifest.json
+            catalog-chunk-*.json.gz
+          key: off-czech-products-v2-${{ steps.source.outputs.fingerprint }}
       - name: Build 100x100 WebP product images
         env:
           IMAGE_WIDTH: '100'
@@ -32,7 +74,7 @@ jobs:
           WEBP_QUALITY: '68'
           IMAGES_PER_CHUNK: '500'
           IMAGE_CONCURRENCY: '8'
-          USER_AGENT: 'JidelnicekPlus-ImageBuilder/1.0 (GitHub Actions)'
+          USER_AGENT: 'JidelnicekPlus-ImageBuilder/1.1 (GitHub Actions)'
         run: node build-food-images.mjs
       - name: Validate complete snapshot set
         run: node validate-snapshot-set.mjs
@@ -45,7 +87,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No snapshot changes"
           else
-            git commit -m "Update Czech catalog and image snapshot set $SNAPSHOT_ID"
+            git commit -m "Update Czech catalog and image snapshot set"
             git fetch origin main
             git rebase origin/main
             git push
