@@ -1,0 +1,6 @@
+Required from the Test build SharePoint folder before GitHub deployment:
+build-cz-catalog.mjs
+fix-archiver-import.mjs
+validate-snapshot-set.mjs
+
+build-food-images.mjs in this package is the corrected v0.8.61 version.
