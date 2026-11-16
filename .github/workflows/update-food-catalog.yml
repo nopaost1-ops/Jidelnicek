@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '20'
       - name: Install image tools
-        run: npm install --no-save sharp archiver@8.0.0
+        run: npm install --no-save sharp archiver@8.0.0@8.0.0
       - name: Create snapshot ID
         run: echo "SNAPSHOT_ID=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
       - name: Read Open Food Facts source version
@@ -42,15 +42,15 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            catalog-manifest.json
-            catalog-chunk-*.json.gz
+            catalog/catalog-manifest.json
+            catalog/catalog-chunk-*.json.gz
           key: off-czech-products-v2-${{ steps.source.outputs.fingerprint }}
       - name: Validate restored product snapshot
         if: steps.product-cache.outputs.cache-hit == 'true'
         run: |
-          test -s catalog-manifest.json
-          ls catalog-chunk-*.json.gz >/dev/null
-          node -e "const m=require('./catalog-manifest.json'); if(!m.products||!m.chunks?.length) process.exit(1); console.log('Using cached product snapshot:',m.products,'products,',m.chunks.length,'chunks')"
+          test -s catalog/catalog-manifest.json
+          ls catalog/catalog-chunk-*.json.gz >/dev/null
+          node -e "const m=require('./catalog/catalog-manifest.json'); if(!m.products||!m.chunks?.length) process.exit(1); console.log('Using cached product snapshot:',m.products,'products,',m.chunks.length,'chunks')"
       - name: Build Czech product snapshot
         if: steps.product-cache.outputs.cache-hit != 'true'
         env:
@@ -58,18 +58,15 @@ jobs:
           MAX_UNCOMPRESSED_CHUNK: '6291456'
           SOURCE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
           USER_AGENT: 'JidelnicekPlus-CatalogBuilder/2.1 (GitHub Actions)'
-        run: node build-cz-catalog.mjs
+        run: node catalog-workflow/build-cz-catalog.mjs
       - name: Save product snapshot immediately
         if: steps.product-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
-            catalog-manifest.json
-            catalog-chunk-*.json.gz
+            catalog/catalog-manifest.json
+            catalog/catalog-chunk-*.json.gz
           key: off-czech-products-v2-${{ steps.source.outputs.fingerprint }}
-      - name: Patch image builder for archiver 8
-        run: node fix-archiver-import.mjs
-      - name: Build 100x100 WebP product images
         env:
           IMAGE_WIDTH: '100'
           IMAGE_HEIGHT: '100'
@@ -77,15 +74,14 @@ jobs:
           IMAGES_PER_CHUNK: '500'
           IMAGE_CONCURRENCY: '8'
           USER_AGENT: 'JidelnicekPlus-ImageBuilder/1.1 (GitHub Actions)'
-        run: node build-food-images.mjs
+        run: node catalog-workflow/build-food-images.mjs
       - name: Validate complete snapshot set
-        run: node validate-snapshot-set.mjs
+        run: node catalog-workflow/validate-snapshot-set.mjs
       - name: Commit complete snapshot set
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add snapshot-manifest.json catalog-manifest.json image-manifest.json image-index.json.gz
-          find . -maxdepth 1 -type f \( -name 'catalog-chunk-*.json.gz' -o -name 'image-chunk-*.zip' \) -print0 | xargs -0 -r git add --
+          git add catalog/
           if git diff --cached --quiet; then
             echo "No snapshot changes"
           else
