@@ -1,16 +1,13 @@
-Jídelníček+ – unified catalog + images workflow
+Workflow 2.1 – cache produktu + oprava archiver 8
 
-Root files:
-- build-cz-catalog.mjs
-- build-food-images.mjs
-- validate-snapshot-set.mjs
+Nahraď:
+.github/workflows/update-food-catalog.yml
 
-Workflow path:
-- .github/workflows/update-food-catalog.yml
+Před prvním spuštěním spusť lokálně nebo přes dočasný GitHub Actions krok:
+node fix-archiver-import.mjs
+Potom commitni upravený build-food-images.mjs a fix-archiver-import.mjs můžeš odstranit.
 
-Výsledkem jednoho ručního běhu je společná sada se stejným snapshotId:
-- snapshot-manifest.json
-- catalog-manifest.json + catalog-chunk-*.json.gz
-- image-manifest.json + image-index.json.gz + image-chunk-*.zip
-
-Nová sada se commitne pouze tehdy, když produktová i obrazová část projdou validací.
+Workflow načte ETag/Last-Modified/Content-Length OFF dumpu a vytvoří fingerprint.
+Shodný fingerprint obnoví catalog-manifest.json a catalog-chunk-*.json.gz z GitHub Actions cache.
+Při cache hit se dlouhý scan přeskočí a workflow pokračuje obrázky.
+Po novém scanu se produktový snapshot uloží do cache okamžitě, ještě před image buildem.
