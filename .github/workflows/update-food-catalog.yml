@@ -59,7 +59,7 @@ jobs:
           path: |
             catalog/catalog-manifest.json
             catalog/catalog-chunk-*.json.gz
-          key: off-czech-products-v2-${{ steps.source.outputs.fingerprint }}
+          key: off-czech-products-v3-${{ steps.source.outputs.fingerprint }}
 
       - name: Validate restored product snapshot
         if: steps.product-cache.outputs.cache-hit == 'true'
@@ -86,7 +86,7 @@ jobs:
           path: |
             catalog/catalog-manifest.json
             catalog/catalog-chunk-*.json.gz
-          key: off-czech-products-v2-${{ steps.source.outputs.fingerprint }}
+          key: off-czech-products-v3-${{ steps.source.outputs.fingerprint }}
 
       - name: Build food image snapshot
         env:
