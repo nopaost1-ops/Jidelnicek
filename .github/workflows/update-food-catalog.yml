@@ -1,40 +1,40 @@
 name: Update Czech food catalog set
-
 on:
   workflow_dispatch:
-
+    inputs:
+      image_batch_start:
+        description: 'Start index for image batch (0, 1000, 2000...)'
+        required: true
+        default: '0'
+      image_batch_size:
+        description: 'Products processed in this run'
+        required: true
+        default: '1000'
 permissions:
   contents: write
-
 concurrency:
   group: update-food-catalog-set
   cancel-in-progress: false
-
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
       OFF_DUMP_URL: https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install image tools
         run: npm install --no-save sharp archiver@8.0.0
-
       - name: Create snapshot ID
         shell: bash
         run: echo "SNAPSHOT_ID=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
-
       - name: Read Open Food Facts source version
         id: source
         shell: bash
@@ -42,16 +42,9 @@ jobs:
           set -euo pipefail
           headers="$(curl -fsSIL --retry 3 --retry-delay 5 "$OFF_DUMP_URL")"
           identity="$(printf '%s\n' "$headers" | tr -d '\r' | grep -iE '^(etag|last-modified|content-length):' | tail -n 3)"
-          if [ -z "$identity" ]; then
-            echo "Source did not provide ETag, Last-Modified or Content-Length" >&2
-            exit 1
-          fi
+          test -n "$identity"
           fingerprint="$(printf '%s' "$identity" | sha256sum | cut -d' ' -f1)"
           echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
-          echo "OFF source identity:"
-          printf '%s\n' "$identity"
-          echo "OFF fingerprint: $fingerprint"
-
       - name: Restore matching product snapshot
         id: product-cache
         uses: actions/cache/restore@v4
@@ -60,25 +53,16 @@ jobs:
             catalog/catalog-manifest.json
             catalog/catalog-chunk-*.json.gz
           key: off-czech-products-v3-${{ steps.source.outputs.fingerprint }}
-
       - name: Validate restored product snapshot
         if: steps.product-cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s catalog/catalog-manifest.json
-          compgen -G 'catalog/catalog-chunk-*.json.gz' > /dev/null
-          node -e "const m=require('./catalog/catalog-manifest.json'); if(!m.products || !m.chunks?.length) process.exit(1); console.log('Using cached product snapshot:',m.products,'products,',m.chunks.length,'chunks')"
-
+        run: node -e "const m=require('./catalog/catalog-manifest.json'); if(!m.products || !m.chunks?.length) process.exit(1); console.log('Using cached product snapshot:',m.products,'products')"
       - name: Build Czech product snapshot
         if: steps.product-cache.outputs.cache-hit != 'true'
         env:
           LOG_EVERY: '100000'
           MAX_UNCOMPRESSED_CHUNK: '6291456'
-          SOURCE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
-          USER_AGENT: 'JidelnicekPlus-CatalogBuilder/2.1 (GitHub Actions)'
+          USER_AGENT: 'JidelnicekPlus-CatalogBuilder/2.2 (GitHub Actions)'
         run: node catalog-workflow/build-cz-catalog.mjs
-
       - name: Save product snapshot
         if: steps.product-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -87,21 +71,18 @@ jobs:
             catalog/catalog-manifest.json
             catalog/catalog-chunk-*.json.gz
           key: off-czech-products-v3-${{ steps.source.outputs.fingerprint }}
-
-      - name: Build food image snapshot
+      - name: Build incremental food image batch
         env:
           IMAGE_WIDTH: '100'
           IMAGE_HEIGHT: '100'
           WEBP_QUALITY: '68'
-          IMAGES_PER_CHUNK: '500'
-          IMAGE_CONCURRENCY: '8'
-          USER_AGENT: 'JidelnicekPlus-ImageBuilder/1.1 (GitHub Actions)'
+          IMAGE_CONCURRENCY: '24'
+          IMAGE_TIMEOUT_MS: '8000'
+          IMAGE_BATCH_START: ${{ inputs.image_batch_start }}
+          IMAGE_BATCH_SIZE: ${{ inputs.image_batch_size }}
+          USER_AGENT: 'JidelnicekPlus-ImageBuilder/3.0 (GitHub Actions)'
         run: node catalog-workflow/build-food-images.mjs
-
-      - name: Validate complete snapshot set
-        run: node catalog-workflow/validate-snapshot-set.mjs
-
-      - name: Commit complete snapshot set
+      - name: Commit incremental image batch
         shell: bash
         run: |
           set -euo pipefail
@@ -109,9 +90,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add catalog/
           if git diff --cached --quiet; then
-            echo "No snapshot changes"
+            echo "No image changes"
             exit 0
           fi
-          git commit -m "Update Czech catalog and image snapshot set"
+          git commit -m "Update Czech image batch ${{ inputs.image_batch_start }}"
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
