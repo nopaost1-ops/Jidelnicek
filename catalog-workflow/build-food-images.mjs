@@ -3,7 +3,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import sharp from 'sharp';
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 
 fs.mkdirSync('catalog', { recursive: true });
 const OUT = 'catalog/';
@@ -85,7 +85,7 @@ if (added.length) {
   const file = `image-chunk-${String(next).padStart(4, '0')}.zip`;
   await new Promise((resolve, reject) => {
     const output = fs.createWriteStream(OUT + file);
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     output.on('close', resolve);
     archive.on('error', reject);
     archive.pipe(output);
