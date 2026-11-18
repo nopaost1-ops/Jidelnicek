@@ -32,3 +32,7 @@ body.foods-page-lock0871{overflow:hidden!important;overscroll-behavior:none!impo
 body.foods-page-lock0873{overflow:hidden!important;overscroll-behavior:none!important}
 body.modal-open0873{overflow:hidden!important}
 #foods.active .foodScrollViewport0859,#foods.active .foodScrollViewport0858,#foods.active .foodScrollViewport0854,#foods.active .foodScrollViewport0853,#foods.active .foodScrollViewport0851,#foods.active .foodScrollViewport0850{overflow-y:auto!important;overscroll-behavior:contain!important}
+
+/* v0.8.74 source-label/scanner refinements */
+#foods .foodSource0832,#foods .foodSource0859,#foods [data-source="off"],#foods [data-source="openfoodfacts"]{display:none!important}
+#catalogUpdate0853[aria-busy="true"],#catalogUpdate0853:disabled{opacity:.42!important;filter:grayscale(1)!important;pointer-events:none!important}

@@ -17,3 +17,7 @@
 
 /* v0.8.73 unit text offset */
 .labUnit0840{padding-left:3ch!important}
+
+/* v0.8.74 unit size refinement */
+.labUnit0840{font-size:12.1px!important}
+@media(max-width:470px){.labUnit0840{font-size:11px!important}}
