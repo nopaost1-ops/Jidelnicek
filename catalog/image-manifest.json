@@ -1,27 +1,27 @@
 {
   "schemaVersion": 3,
-  "snapshotId": "20261117T122035Z",
-  "generatedAt": "2026-11-17T21:27:42.502Z",
+  "snapshotId": "20261118T071131Z",
+  "generatedAt": "2026-11-18T08:00:01.258Z",
   "width": 100,
   "height": 100,
   "format": "webp",
   "quality": 68,
   "strategy": "incremental-ean-batches",
-  "products": 24489,
-  "processedThrough": 3000,
-  "batchStart": 2000,
+  "products": 24523,
+  "processedThrough": 4000,
+  "batchStart": 3000,
   "batchSize": 1000,
-  "availableImages": 960,
-  "missingImages": 23529,
-  "lastBatchAdded": 301,
-  "lastBatchUnavailable": 699,
+  "availableImages": 1806,
+  "missingImages": 22717,
+  "lastBatchAdded": 846,
+  "lastBatchUnavailable": 151,
   "lastBatchFailed": 0,
   "index": {
     "file": "image-index.json.gz",
-    "size": 48980,
-    "sha256": "167e5beec86791993aeef430855309f4776a9090aa32573b42147d6e691b0086"
+    "size": 91226,
+    "sha256": "b7572fd2fe26d7844b2d12059571246bca896c579a6d691d4c355b89e4b38373"
   },
-  "totalCompressedBytes": 1628566,
+  "totalCompressedBytes": 3069698,
   "chunks": [
     {
       "file": "image-chunk-0001.zip",
@@ -40,6 +40,12 @@
       "images": 301,
       "size": 512229,
       "sha256": "3fbcea737a4a8761bee2a50794947435233fccd1970963d1b82acc7ad4d87b4c"
+    },
+    {
+      "file": "image-chunk-0004.zip",
+      "images": 846,
+      "size": 1398886,
+      "sha256": "17ab8720dd8898a5a0168fbfa047ea2b471e34599efc5890ab14af1a250e3ad2"
     }
   ]
 }

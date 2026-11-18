@@ -1,35 +1,35 @@
 {
   "schemaVersion": 2,
-  "snapshotId": "20261117T122035Z",
-  "generatedAt": "2026-11-17T12:51:39.085Z",
+  "snapshotId": "20261118T071131Z",
+  "generatedAt": "2026-11-18T07:50:58.721Z",
   "source": "Open Food Facts",
   "license": "ODbL-1.0",
-  "products": 24489,
-  "scanned": 4918265,
-  "rejected": 4893776,
-  "czechCandidates": 24489,
-  "totalCompressedBytes": 2274665,
+  "products": 24523,
+  "scanned": 4921642,
+  "rejected": 4897119,
+  "czechCandidates": 24523,
+  "totalCompressedBytes": 2274615,
   "chunks": [
     {
       "file": "catalog-chunk-0001.json.gz",
-      "products": 9622,
-      "size": 1076694,
-      "uncompressedSize": 6291385,
-      "sha256": "42aa134b5d019b1db3a331c22335c6d5fd1ddba0bcb410a1ade22c637dd86920"
+      "products": 9627,
+      "size": 1074766,
+      "uncompressedSize": 6291198,
+      "sha256": "8b5f7fcfbd275a1ff70115874267d0416edf6825e5013a39e5ce93054659234b"
     },
     {
       "file": "catalog-chunk-0002.json.gz",
-      "products": 11350,
-      "size": 922366,
-      "uncompressedSize": 6291334,
-      "sha256": "334cecd39f0c09796624f0eb406b16dc1b36eebfd98aef354f7ea780b14270e8"
+      "products": 11351,
+      "size": 922089,
+      "uncompressedSize": 6291239,
+      "sha256": "18638a89b16820dde27c2b0cc4eabc6ad2cb871b51c9cf9401d7f8bfae6d37da"
     },
     {
       "file": "catalog-chunk-0003.json.gz",
-      "products": 3517,
-      "size": 275605,
-      "uncompressedSize": 1920396,
-      "sha256": "8a3bc0bf3c7cfab13a54c33d841b695b2e0553e68c4a74f0230cdd048d1a2f0c"
+      "products": 3545,
+      "size": 277760,
+      "uncompressedSize": 1937011,
+      "sha256": "9e51c8904341cc9c4fc0d264fa48929195aa8e99b4bc118aacc2e9a707d6e98d"
     }
   ]
 }
