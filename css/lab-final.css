@@ -6,3 +6,11 @@
 /* v0.8.71 Laboratory order: Min | Hodnota | Max | Jednotka | Stav | Info */
 .labValues0840{grid-template-columns:12% 18% 12% 30% 14% 14%!important}.labValues0840>.labMin0840{grid-column:1}.labValues0840>.labValue0840{grid-column:2}.labValues0840>.labMax0840{grid-column:3}.labValues0840>.labUnit0840{grid-column:4}.labValues0840>.labState0840,.labValues0840>.labState0842{grid-column:5}.labValues0840>.labInfo0840{grid-column:6;justify-self:center}.labHeader0840{grid-template-columns:12% 18% 12% 30% 14% 14%!important}
 .labState0842.bad{width:42px!important;height:28px!important;border-radius:15px!important}.labState0842.bad::before{color:#fff!important;font-size:23px!important;font-weight:1000!important}
+
+/* v0.8.72 Laboratory corrections */
+.labValues0840{grid-template-columns:12% 18% 12% 30% 14% 14%!important}
+.labValues0840>.labMin0840{grid-column:1!important}.labValues0840>.labValue0840{grid-column:2!important}.labValues0840>.labMax0840{grid-column:3!important}.labValues0840>.labUnit0840{grid-column:4!important}.labValues0840>.labState0840,.labValues0840>.labState0842{grid-column:5!important}.labValues0840>.labInfo0840{grid-column:6!important;grid-row:1!important;justify-self:center!important}
+.labState0842.bad{width:28px!important;height:28px!important;border-radius:50%!important}
+.labState0842.bad::before{font-size:0!important;color:#fff!important}
+.labState0842.bad[data-dir="up"]::before{content:"▲"!important;font-size:28.5px!important;line-height:1!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+.labState0842.bad[data-dir="down"]::before{content:"▼"!important;font-size:28.5px!important;line-height:1!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
