@@ -12,38 +12,3 @@
 #foods .foodRow0832:first-child{margin-top:0!important}
 /* 3. Professional settings cards. */
 .settingsPage0865{padding-bottom:12px}.settingsHero0865{margin:2px 0 20px}.settingsHero0865 h1{margin-bottom:4px}.settingsHero0865 p{margin:0;color:var(--muted);font-size:14px}.settingsSection0865{margin:18px 0}.settingsSection0865>h2{margin:0 4px 8px;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}.settingsCard0865{background:var(--card);border:1px solid rgba(47,107,79,.12);border-radius:16px;margin:8px 0;box-shadow:0 3px 14px rgba(32,48,41,.07);overflow:hidden}.settingsCardHead0865{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px}.settingsCardHead0865 h3{margin:0 0 3px;font-size:18px}.settingsCardHead0865 p{margin:0;color:var(--muted);font-size:13px;line-height:1.3}.settingsIcon0865{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#dcebe2;color:var(--g);font-size:21px;font-weight:800}.settingsCardBody0865{padding:0 14px 14px;border-top:1px solid rgba(47,107,79,.1)}.settingsPrimary0865{width:100%;margin-top:8px}.settingsActions0865{display:grid;grid-template-columns:1fr 1fr;gap:8px}.settingsActions0865 .dangerSub{grid-column:1/-1}.settingsArrow0865{width:38px;height:38px;padding:0;border-radius:50%;font-size:28px;line-height:1;background:#e3ece6;color:var(--g)}.settingsLinkCard0865 .settingsCardHead0865{min-height:72px}.settingsExport0865{width:100%;margin-top:8px}@media(max-width:460px){.settingsCardHead0865{grid-template-columns:40px minmax(0,1fr) auto;padding:12px;gap:10px}.settingsIcon0865{width:40px;height:40px}.settingsActions0865{grid-template-columns:1fr}.settingsActions0865 .dangerSub{grid-column:auto}.settingsCardBody0865{padding:0 12px 12px}}
-
-/* v0.8.66 mobile Foods stabilization */
-#foods .categoryCard0859 span{
-  font-size:14px!important;
-  line-height:1.08!important;
-  font-weight:700!important;
-}
-#foods .categoryCard0854 span,
-#foods .categoryCard0853 span,
-#foods .categoryCard0851 span,
-#foods .categoryCard0850 span{
-  font-size:15px!important;
-  line-height:1.08!important;
-}
-html.foodsLock0866,body.foodsLock0866{
-  overflow:hidden!important;
-  overscroll-behavior:none!important;
-}
-#foods.foodsViewport0866{
-  position:fixed!important;
-  left:0!important;
-  right:0!important;
-  top:var(--foods-top-0866)!important;
-  bottom:var(--foods-bottom-0866)!important;
-  height:auto!important;
-  min-height:0!important;
-  margin:0!important;
-  overflow:hidden!important;
-  z-index:1!important;
-}
-#foods.foodsViewport0866 #foodList{
-  flex:1 1 auto!important;
-  min-height:0!important;
-  overflow:hidden!important;
-}
