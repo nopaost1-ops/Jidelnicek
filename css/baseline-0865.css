@@ -27,3 +27,8 @@ body.foods-page-lock0871{overflow:hidden!important;overscroll-behavior:none!impo
 /* v0.8.72 corrections */
 #foods .categoryCard0859 span{font-size:12.6px!important}
 #foods .categoryCard0854 span,#foods .categoryCard0853 span,#foods .categoryCard0851 span,#foods .categoryCard0850 span{font-size:13.5px!important}
+
+/* v0.8.73 stability and scanner result behavior */
+body.foods-page-lock0873{overflow:hidden!important;overscroll-behavior:none!important}
+body.modal-open0873{overflow:hidden!important}
+#foods.active .foodScrollViewport0859,#foods.active .foodScrollViewport0858,#foods.active .foodScrollViewport0854,#foods.active .foodScrollViewport0853,#foods.active .foodScrollViewport0851,#foods.active .foodScrollViewport0850{overflow-y:auto!important;overscroll-behavior:contain!important}

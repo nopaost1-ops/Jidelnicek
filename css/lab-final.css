@@ -14,3 +14,6 @@
 .labState0842.bad::before{font-size:0!important;color:#fff!important}
 .labState0842.bad[data-dir="up"]::before{content:"▲"!important;font-size:28.5px!important;line-height:1!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
 .labState0842.bad[data-dir="down"]::before{content:"▼"!important;font-size:28.5px!important;line-height:1!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+
+/* v0.8.73 unit text offset */
+.labUnit0840{padding-left:3ch!important}
