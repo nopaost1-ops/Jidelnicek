@@ -37,9 +37,11 @@
     return `<div class="foodRow0832"><div class="foodMain0832"><b>${name}</b><small>${html(sub)}</small></div><button type="button" class="foodInfo0832" aria-label="Informace o ${name}" onclick="event.stopPropagation();${action}">i</button></div>`
   }
   window.renderFoods0832=async function(reset=false){
-  if(!window.selectedFoodCategory0859){const list=$i('foodList');if(list)list.innerHTML='';return;}
-    if(reset)visibleLimit=PAGE_SIZE;
     const list=$i('foodList');if(!list)return;
+    if(!window.selectedFoodCategory0859){list.innerHTML='';return;}
+    if(reset)visibleLimit=PAGE_SIZE;
+    // Clear stale legacy/Open Food Facts content while the selected category loads.
+    list.innerHTML='';
     currentRows=await filterRows();
     const shown=currentRows.slice(0,visibleLimit);
     list.innerHTML=shown.length?shown.map(rowCard).join(''):`<div class="card note">Nenalezena žádná potravina.</div>`;
