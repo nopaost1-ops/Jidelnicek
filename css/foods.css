@@ -34,3 +34,43 @@
 #foods .categoryCard0859{display:flex!important;flex-direction:column!important;align-items:center!important;text-align:center!important}
 #foods .categoryCard0859 span{text-align:center!important;font-size:11px!important;line-height:12px!important}
 #foods .foodScrollViewport0859{overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;scrollbar-gutter:stable!important}
+/* v0.8.75: compact two-line food rows with EAN product thumbnails */
+.foodRow0832{
+  grid-template-columns:30px minmax(0,1fr) 34px!important;
+  gap:7px!important;
+  padding:7px 3px!important;
+  min-height:44px;
+}
+.foodThumbSlot0875{
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border-radius:6px;
+  background:#f1f4f2;
+}
+.foodThumbSlot0875.hasImage0875{background:#fff}
+.foodThumb0875{
+  display:block;
+  width:30px;
+  height:30px;
+  object-fit:contain;
+}
+.foodThumb0875[hidden]{display:none}
+.foodMain0832{min-width:0!important;gap:1px!important}
+.foodMain0832 b{
+  display:block;
+  min-width:0;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+  white-space:nowrap!important;
+  overflow-wrap:normal!important;
+}
+.foodMain0832 small{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap!important;
+  line-height:1.15;
+}

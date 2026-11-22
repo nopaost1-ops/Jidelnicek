@@ -30,11 +30,71 @@
     rows=rows.filter(x=>(!cat||foodCategory(x)===cat)&&(!q||normalize(foodName(x)).includes(q)||normalize(foodBrand(x)).includes(q)||foodEan(x).includes(q)));
     return sortRows(rows,sort)
   }
+  const PRODUCT_IMAGE_INDEX_URL='./catalog/image-index.json.gz';
+  const productImageIndex=new Map();
+  const productImageUrls=new Map();
+  const productImageChunks=new Map();
+  let productImageIndexPromise=null;
+  async function decompress0875(blob,format){
+    if(!('DecompressionStream' in window))throw new Error('DecompressionStream není podporován.');
+    return new Response(blob.stream().pipeThrough(new DecompressionStream(format))).arrayBuffer()
+  }
+  async function ensureProductImageIndex0875(){
+    if(productImageIndexPromise)return productImageIndexPromise;
+    productImageIndexPromise=(async()=>{
+      const response=await fetch(PRODUCT_IMAGE_INDEX_URL,{cache:'force-cache'});
+      if(!response.ok)throw new Error(`Index obrázků: HTTP ${response.status}`);
+      const buffer=await decompress0875(await response.blob(),'gzip');
+      const rows=JSON.parse(new TextDecoder().decode(buffer));
+      rows.forEach(row=>{const ean=String(row?.ean||'').replace(/\D/g,'');if(ean&&row?.chunk&&row?.file)productImageIndex.set(ean,{chunk:String(row.chunk),file:String(row.file)})});
+      return productImageIndex
+    })().catch(error=>{console.warn('Product image index',error);return productImageIndex});
+    return productImageIndexPromise
+  }
+  function zipU160875(view,offset){return view.getUint16(offset,true)}
+  function zipU320875(view,offset){return view.getUint32(offset,true)}
+  async function loadImageChunk0875(chunk){
+    if(productImageChunks.has(chunk))return productImageChunks.get(chunk);
+    const promise=(async()=>{
+      const response=await fetch(`./catalog/${chunk}`,{cache:'force-cache'});
+      if(!response.ok)throw new Error(`${chunk}: HTTP ${response.status}`);
+      const buffer=await response.arrayBuffer(),view=new DataView(buffer),bytes=new Uint8Array(buffer),entries=new Map();
+      let eocd=-1;
+      for(let i=buffer.byteLength-22;i>=Math.max(0,buffer.byteLength-65557);i--){if(zipU320875(view,i)===0x06054b50){eocd=i;break}}
+      if(eocd<0)throw new Error(`${chunk}: ZIP konec nenalezen`);
+      const count=zipU160875(view,eocd+10),centralOffset=zipU320875(view,eocd+16);let pos=centralOffset;
+      for(let i=0;i<count;i++){
+        if(zipU320875(view,pos)!==0x02014b50)throw new Error(`${chunk}: neplatný ZIP adresář`);
+        const method=zipU160875(view,pos+10),compressedSize=zipU320875(view,pos+20),nameLength=zipU160875(view,pos+28),extraLength=zipU160875(view,pos+30),commentLength=zipU160875(view,pos+32),localOffset=zipU320875(view,pos+42);
+        const name=new TextDecoder().decode(bytes.slice(pos+46,pos+46+nameLength));
+        const localNameLength=zipU160875(view,localOffset+26),localExtraLength=zipU160875(view,localOffset+28),dataOffset=localOffset+30+localNameLength+localExtraLength;
+        entries.set(name,{method,data:bytes.slice(dataOffset,dataOffset+compressedSize)});
+        pos+=46+nameLength+extraLength+commentLength
+      }
+      return entries
+    })().catch(error=>{productImageChunks.delete(chunk);throw error});
+    productImageChunks.set(chunk,promise);return promise
+  }
+  async function productImageUrl0875(ean){
+    const code=String(ean||'').replace(/\D/g,'');if(!code)return'';
+    if(productImageUrls.has(code))return productImageUrls.get(code);
+    const promise=(async()=>{
+      await ensureProductImageIndex0875();const hit=productImageIndex.get(code);if(!hit)return'';
+      const entries=await loadImageChunk0875(hit.chunk),entry=entries.get(hit.file);if(!entry)return'';
+      let data;if(entry.method===0)data=entry.data;else if(entry.method===8)data=new Uint8Array(await decompress0875(new Blob([entry.data]),'deflate-raw'));else throw new Error(`Nepodporovaná ZIP metoda ${entry.method}`);
+      return URL.createObjectURL(new Blob([data],{type:'image/webp'}))
+    })().catch(error=>{console.warn('Product image',code,error);return''});
+    productImageUrls.set(code,promise);return promise
+  }
+  async function hydrateProductImages0875(root){
+    const images=[...root.querySelectorAll('img.foodThumb0875[data-ean]')];
+    await Promise.all(images.map(async image=>{const url=await productImageUrl0875(image.dataset.ean);if(!url||!image.isConnected)return;image.src=url;image.hidden=false;image.closest('.foodThumbSlot0875')?.classList.add('hasImage0875')}))
+  }
   function rowCard(x){
-    const name=html(foodName(x)||'Bez názvu'),brand=foodBrand(x),kcal=energy(x);
-    const sub=[x._custom?'Vlastní':brand,kcal==null?'energie neuvedena':`${kcal} kcal / 100 g`].filter(Boolean).join(' · ');
-    const action=x._source==='off'?`showFoodInfo0832('off','${foodEan(x)}')`:`showFoodInfo0832('local','${String(x.id).replace(/'/g,"\\'")}')`;
-    return `<div class="foodRow0832"><div class="foodMain0832"><b>${name}</b><small>${html(sub)}</small></div><button type="button" class="foodInfo0832" aria-label="Informace o ${name}" onclick="event.stopPropagation();${action}">i</button></div>`
+    const rawName=foodName(x)||'Bez názvu',name=html(rawName),ean=foodEan(x),kcal=energy(x);
+    const sub=kcal==null?'energie neuvedena':`${kcal} kcal / 100 g`;
+    const action=x._source==='off'?`showFoodInfo0832('off','${ean}')`:`showFoodInfo0832('local','${String(x.id).replace(/'/g,"\\'")}')`;
+    return `<div class="foodRow0832"><span class="foodThumbSlot0875" aria-hidden="true">${ean?`<img class="foodThumb0875" data-ean="${html(ean)}" alt="" hidden>`:''}</span><div class="foodMain0832"><b title="${name}">${name}</b><small>${html(sub)}</small></div><button type="button" class="foodInfo0832" aria-label="Informace o ${name}" onclick="event.stopPropagation();${action}">i</button></div>`
   }
   window.renderFoods0832=async function(reset=false){
     const list=$i('foodList');if(!list)return;
@@ -45,6 +105,7 @@
     currentRows=await filterRows();
     const shown=currentRows.slice(0,visibleLimit);
     list.innerHTML=shown.length?shown.map(rowCard).join(''):`<div class="card note">Nenalezena žádná potravina.</div>`;
+    hydrateProductImages0875(list);
     if(currentRows.length>shown.length)list.insertAdjacentHTML('beforeend',`<div class="foodsMore0832">Zobrazeno ${shown.length.toLocaleString('cs-CZ')} z ${currentRows.length.toLocaleString('cs-CZ')}<button type="button" onclick="loadMoreFoods0832()">Načíst dalších 50</button></div>`);
     else if(currentRows.length)list.insertAdjacentHTML('beforeend',`<div class="foodsMore0832">Zobrazeno ${shown.length.toLocaleString('cs-CZ')} z ${currentRows.length.toLocaleString('cs-CZ')}</div>`)
   };
