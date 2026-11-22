@@ -1,0 +1,5 @@
+/* Jidelnicek+ v0.8.76: three-line product rows with readable EAN imagery */
+.foodRow0832{grid-template-columns:48px minmax(0,1fr) 34px!important;gap:8px!important;padding:7px 3px!important;min-height:62px!important;align-items:center!important}
+.foodThumbSlot0876{width:48px;height:48px;display:grid;place-items:center;overflow:hidden;border-radius:8px;background:#f1f4f2}
+.foodThumbSlot0876.hasImage0876{background:#fff}.foodThumb0876{display:block;width:48px;height:48px;object-fit:contain}.foodThumb0876[hidden]{display:none}
+.foodMain0832{min-width:0!important;display:grid!important;gap:1px!important}.foodMain0832 b{display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;overflow-wrap:normal!important}.foodMain0832 small{display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;line-height:1.15!important}.foodBrand0876{font-size:11px!important;color:#7a8881!important}
