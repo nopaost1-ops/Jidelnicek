@@ -1,4 +1,4 @@
-/* Jidelnicek+ v0.8.78 - larger images, fallbacks and scanner category focus */
+/* Jidelnicek+ v0.8.79 - larger images, fallbacks and scanner category focus */
 (()=>{
   const PAGE_SIZE=50;
   let visibleLimit=PAGE_SIZE;
@@ -79,7 +79,8 @@
     const additives=(x.additives||[]).map(a=>a.code||a.tag).filter(Boolean).join(', ')||'–';
     const emuls=(x.emulsifiers||[]).map(a=>a.code||a.tag).filter(Boolean).join(', ')||'–';
     const ingredients=x.ingredientsText||x.ingredients_text||'–';
-    body.innerHTML=`${detailImageMarkup0878(x)}<div class="foodInfoHead0832"><h2>${html(foodName(x))}</h2><small>${html(foodBrand(x)|| (source==='off'?'Open Food Facts':'Vlastní potravina'))}</small></div><div class="foodInfoGrid0832">${nutritionLine('Energie',x.kcal,'kcal')}${nutritionLine('kJ',x.kj,'kJ')}${nutritionLine('Bílkoviny',x.p)}${nutritionLine('Sacharidy',x.c)}${nutritionLine('Cukry',x.sugars)}${nutritionLine('Tuky',x.f)}${nutritionLine('Nasycené tuky',x.saturated)}${nutritionLine('Vláknina',x.fiber)}${nutritionLine('Sůl',x.salt)}</div><h3>Složení</h3><p>${html(ingredients)}</p><h3>Alergeny</h3><p>${html(allergens)}</p><h3>Aditiva</h3><p>${html(additives)}</p><h3>Emulgátory</h3><p>${html(emuls)}</p><div class="foodMeta0832">${foodEan(x)?`EAN ${html(foodEan(x))} · `:''}${source==='off'?'Zdroj: Open Food Facts (ODbL)':'Zdroj: vlastní položka'}</div>${source==='off'?'<p class="foodDisclaimer0832">Údaje Open Food Facts jsou komunitně spravované a mohou být neúplné nebo nepřesné.</p>':''}`;
+    const detailSource=source==='off'?'Open Food Facts · ODbL':'Vlastní potravina';
+    body.innerHTML=`<div class="foodDetailTop0879"><div class="foodDetailImageCol0879">${detailImageMarkup0878(x)}</div><div class="foodDetailSide0879"><button type="button" class="foodDetailClose0879" aria-label="Zavřít" onclick="this.closest('dialog')?.close()">×</button><div class="foodDetailMeta0879"><span>EAN</span><b>${html(foodEan(x)||'neuveden')}</b><span>Zdroj</span><b>${html(detailSource)}</b></div></div></div><div class="foodInfoHead0832"><h2>${html(foodName(x))}</h2><small>${html(foodBrand(x)|| (source==='off'?'Open Food Facts':'Vlastní potravina'))}</small></div><div class="foodInfoGrid0832">${nutritionLine('Energie',x.kcal,'kcal')}${nutritionLine('kJ',x.kj,'kJ')}${nutritionLine('Bílkoviny',x.p)}${nutritionLine('Sacharidy',x.c)}${nutritionLine('Cukry',x.sugars)}${nutritionLine('Tuky',x.f)}${nutritionLine('Nasycené tuky',x.saturated)}${nutritionLine('Vláknina',x.fiber)}${nutritionLine('Sůl',x.salt)}</div><h3>Složení</h3><p>${html(ingredients)}</p><h3>Alergeny</h3><p>${html(allergens)}</p><h3>Aditiva</h3><p>${html(additives)}</p><h3>Emulgátory</h3><p>${html(emuls)}</p>${source==='off'?'<p class="foodDisclaimer0832">Údaje Open Food Facts jsou komunitně spravované a mohou být neúplné nebo nepřesné.</p>':''}`;
     hydrateDetailImage0878(body);
     dlg.showModal()
   };
