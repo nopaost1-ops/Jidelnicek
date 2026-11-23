@@ -1,4 +1,4 @@
-/* Jidelnicek+ v0.8.77 - larger images, fallbacks and scanner category focus */
+/* Jidelnicek+ v0.8.78 - larger images, fallbacks and scanner category focus */
 (()=>{
   const PAGE_SIZE=50;
   let visibleLimit=PAGE_SIZE;
@@ -64,6 +64,14 @@
   window.loadMoreFoods0832=function(){visibleLimit+=PAGE_SIZE;renderFoods0832(false)};
   function nutritionLine(label,value,unit='g'){return `<div><span>${label}</span><b>${value==null?'–':`${Number(value).toLocaleString('cs-CZ',{maximumFractionDigits:2})} ${unit}`}</b></div>`}
   async function getInfo(source,key){if(source==='off'){const all=await catalogAll0825();return all.find(x=>foodEan(x)===key)||null}return (db.foods||[]).find(x=>String(x.id)===String(key))||null}
+  function detailImageMarkup0878(x){
+    const ean=foodEan(x),category=foodCategory(x),fallback=(window.categoryImage0859?.(category))||'assets/categories/cat-other.webp';
+    return `<div class="foodDetailImageSlot0878"><img class="foodDetailFallback0878" src="${html(fallback)}" alt=""><span class="foodDetailFallbackMark0878">?</span>${ean?`<img class="foodDetailImage0878" data-ean="${html(ean)}" alt="Obrázek produktu" hidden>`:''}</div>`
+  }
+  async function hydrateDetailImage0878(root){
+    const image=root?.querySelector('img.foodDetailImage0878[data-ean]');if(!image)return;
+    const url=await productImageUrl0877(image.dataset.ean);if(url&&image.isConnected){image.src=url;image.hidden=false;image.closest('.foodDetailImageSlot0878')?.classList.add('hasImage0878')}
+  }
   window.showFoodInfo0832=async function(source,key){
     const x=await getInfo(source,key);if(!x)return;
     const dlg=$i('foodInfoDialog0832'),body=$i('foodInfoBody0832');if(!dlg||!body)return;
@@ -71,7 +79,8 @@
     const additives=(x.additives||[]).map(a=>a.code||a.tag).filter(Boolean).join(', ')||'–';
     const emuls=(x.emulsifiers||[]).map(a=>a.code||a.tag).filter(Boolean).join(', ')||'–';
     const ingredients=x.ingredientsText||x.ingredients_text||'–';
-    body.innerHTML=`<div class="foodInfoHead0832"><h2>${html(foodName(x))}</h2><small>${html(foodBrand(x)|| (source==='off'?'Open Food Facts':'Vlastní potravina'))}</small></div><div class="foodInfoGrid0832">${nutritionLine('Energie',x.kcal,'kcal')}${nutritionLine('kJ',x.kj,'kJ')}${nutritionLine('Bílkoviny',x.p)}${nutritionLine('Sacharidy',x.c)}${nutritionLine('Cukry',x.sugars)}${nutritionLine('Tuky',x.f)}${nutritionLine('Nasycené tuky',x.saturated)}${nutritionLine('Vláknina',x.fiber)}${nutritionLine('Sůl',x.salt)}</div><h3>Složení</h3><p>${html(ingredients)}</p><h3>Alergeny</h3><p>${html(allergens)}</p><h3>Aditiva</h3><p>${html(additives)}</p><h3>Emulgátory</h3><p>${html(emuls)}</p><div class="foodMeta0832">${foodEan(x)?`EAN ${html(foodEan(x))} · `:''}${source==='off'?'Zdroj: Open Food Facts (ODbL)':'Zdroj: vlastní položka'}</div>${source==='off'?'<p class="foodDisclaimer0832">Údaje Open Food Facts jsou komunitně spravované a mohou být neúplné nebo nepřesné.</p>':''}`;
+    body.innerHTML=`${detailImageMarkup0878(x)}<div class="foodInfoHead0832"><h2>${html(foodName(x))}</h2><small>${html(foodBrand(x)|| (source==='off'?'Open Food Facts':'Vlastní potravina'))}</small></div><div class="foodInfoGrid0832">${nutritionLine('Energie',x.kcal,'kcal')}${nutritionLine('kJ',x.kj,'kJ')}${nutritionLine('Bílkoviny',x.p)}${nutritionLine('Sacharidy',x.c)}${nutritionLine('Cukry',x.sugars)}${nutritionLine('Tuky',x.f)}${nutritionLine('Nasycené tuky',x.saturated)}${nutritionLine('Vláknina',x.fiber)}${nutritionLine('Sůl',x.salt)}</div><h3>Složení</h3><p>${html(ingredients)}</p><h3>Alergeny</h3><p>${html(allergens)}</p><h3>Aditiva</h3><p>${html(additives)}</p><h3>Emulgátory</h3><p>${html(emuls)}</p><div class="foodMeta0832">${foodEan(x)?`EAN ${html(foodEan(x))} · `:''}${source==='off'?'Zdroj: Open Food Facts (ODbL)':'Zdroj: vlastní položka'}</div>${source==='off'?'<p class="foodDisclaimer0832">Údaje Open Food Facts jsou komunitně spravované a mohou být neúplné nebo nepřesné.</p>':''}`;
+    hydrateDetailImage0878(body);
     dlg.showModal()
   };
   window.editFoodFromInfo0832=async function(){return};
